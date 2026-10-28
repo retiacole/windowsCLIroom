@@ -130,7 +130,7 @@
     return null;
   }
 
-  function adapterText(net, all) {
+  function adapterText(net, all, wifiOnly = false) {
     const a = net.adapter;
     const out = ['Windows IP Configuration'];
     if (all) out.push('', '   Host Name . . . . . . . . . . . . : PC-014', '   Primary Dns Suffix  . . . . . . . : corp.example', '   Node Type . . . . . . . . . . . . : Hybrid');
@@ -141,7 +141,7 @@
       out.push('   IPv4 Address. . . . . . . . . . . : ' + a.ip, '   Subnet Mask . . . . . . . . . . . : ' + a.mask, '   Default Gateway . . . . . . . . . : ' + a.gateway);
       if (all) out.push('   DHCP Server . . . . . . . . . . . : ' + a.gateway, '   DNS Servers . . . . . . . . . . . : ' + a.dns, '   NetBIOS over Tcpip. . . . . . . . : Enabled');
     }
-    if (net.vpn.connected) {
+    if (net.vpn.connected && !wifiOnly) {
       out.push('', 'PPP adapter CORP-VPN:', '', '   Connection-specific DNS Suffix  . : corp.example');
       if (all) out.push('   Description . . . . . . . . . . . : CORP-VPN', '   DHCP Enabled. . . . . . . . . . . : No');
       out.push('   IPv4 Address. . . . . . . . . . . : ' + net.vpn.ip, '   Subnet Mask . . . . . . . . . . . : 255.255.255.255', '   Default Gateway . . . . . . . . . :');
@@ -151,9 +151,11 @@
   }
 
   function ipconfig(net, args) {
-    const usage = 'ipconfig [/all | /displaydns | /flushdns | /renew]';
-    if (args.length > 1) return unsupported(usage);
+    const usage = 'ipconfig [/all | /displaydns | /flushdns | /renew [Wi-Fi]]';
     const mode = (args[0] || '').toLowerCase();
+    // /renew accepts an adapter name; this model has one DHCP adapter.
+    // https://learn.microsoft.com/windows-server/administration/windows-commands/ipconfig
+    if (args.length > 1 && !(mode === '/renew' && args.length === 2 && args[1].toLowerCase() === net.adapter.name.toLowerCase())) return unsupported(usage);
     if (!mode || mode === '/all') return ok(adapterText(net, mode === '/all'));
     if (mode === '/displaydns') {
       const out = ['Windows IP Configuration'];
@@ -168,7 +170,7 @@
     if (mode === '/renew') {
       if (!net.adapter.connected) return fail('No operation can be performed on Wi-Fi while it has its media disconnected.');
       net.adapter.leaseRenewals += 1;
-      return ok(adapterText(net, false), ['DHCP lease renewed; manually configured DNS is unchanged']);
+      return ok(adapterText(net, false, args.length === 2), ['DHCP lease renewed; manually configured DNS is unchanged']);
     }
     return unsupported(usage);
   }
@@ -226,9 +228,12 @@
     if (srv && host !== '_ldap._tcp.dc._msdcs.corp.example') return unsupported(usage);
     const target = srv ? resolve(net, 'dc01.corp.example', false, dns) : resolve(net, host, false, dns);
     if (target.error === 'unsupported') return targetError(target, 'nslookup');
-    const heading = 'Server:  ' + (dns === '10.20.0.10' ? 'dc01.corp.example' : 'UnKnown') + '\nAddress:  ' + dns;
+    // A configured address is still shown while disconnected, but the model
+    // cannot establish the server's name without a reachable DNS server.
+    const serverName = dns === '10.20.0.10' && net.adapter.connected && reachable(net, dns) ? 'dc01.corp.example' : 'UnKnown';
+    const heading = 'Server:  ' + serverName + '\nAddress:  ' + dns;
     if (target.error === 'nxdomain') return {stdout: heading, stderr: '*** UnKnown can\'t find ' + host + ': Non-existent domain', code: 1};
-    if (target.error || !net.adapter.connected || !reachable(net, dns) || !['10.20.0.10', '192.168.50.1'].includes(dns)) return {stdout: heading + '\n\nDNS request timed out.\n    timeout was 2 seconds.', stderr: '*** Request to ' + (dns === '10.20.0.10' ? 'dc01.corp.example' : 'UnKnown') + ' timed-out', code: 1};
+    if (target.error || !net.adapter.connected || !reachable(net, dns) || !['10.20.0.10', '192.168.50.1'].includes(dns)) return {stdout: heading + '\n\nDNS request timed out.\n    timeout was 2 seconds.', stderr: '*** Request to ' + serverName + ' timed-out', code: 1};
     if (srv) return ok(heading + '\n\n' + host + ' SRV service location:\n          priority = 0\n          weight = 100\n          port = 389\n          svr hostname = dc01.corp.example\ndc01.corp.example internet address = 10.20.0.10');
     return ok(heading + '\n\nName:    ' + target.host + '\nAddress:  ' + target.ip);
   }
@@ -262,7 +267,9 @@
   }
 
   function route(net, args) {
-    if (args.length !== 1 || args[0].toLowerCase() !== 'print') return unsupported('route print');
+    const words = args.map(arg => arg.toLowerCase());
+    if (!(words.length === 1 && words[0] === 'print') &&
+      !(words.length === 2 && words.includes('print') && words.includes('-4'))) return unsupported('route print [-4] (this simulator models IPv4 only)');
     const a = net.adapter;
     const out = ['Interface List', ' 12...02 20 00 00 00 14 ......Virtual Wi-Fi Adapter'];
     if (net.vpn.connected) out.push(' 24...........................CORP-VPN');
@@ -305,6 +312,9 @@
     if (['int', 'interface'].includes(words[0]) && ['ip', 'ipv4'].includes(words[1])) {
       words[0] = 'interface'; words[1] = 'ipv4';
     }
+    // The single supported WLAN abbreviation is unambiguous in real NetShell.
+    // https://learn.microsoft.com/previous-versions/windows/desktop/netshell/netshell-and-command-abbreviation
+    if (words.length === 3 && words[0] === 'wlan' && words[1] === 'show' && words[2] === 'interface') words[2] = 'interfaces';
     const key = words.join(' ');
     const a = net.adapter;
     if (key === 'wlan show interfaces') return ok(lines(['There is 1 interface on the system:', '', '    Name                   : Wi-Fi', '    Description            : Virtual Wi-Fi Adapter', '    Physical address       : ' + a.mac.toLowerCase().replace(/-/g, ':'), '    State                  : ' + (a.connected ? 'connected' : 'disconnected'), ...(a.connected ? ['    SSID                   : ' + a.ssid, '    Network type           : Infrastructure', '    Radio type             : 802.11ac', '    Authentication         : ' + (net.vpn.connected ? 'WPA2-Personal' : 'WPA2-Enterprise'), '    Channel                : 36', '    Receive rate (Mbps)    : 866.7', '    Transmit rate (Mbps)   : 866.7', '    Signal                 : 92%', '    Profile                : ' + a.ssid] : [])]));
@@ -430,15 +440,15 @@
   }
 
   const reference = [
-    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew]', 'IP・DNS 設定とキャッシュを確認', 'Inspect IP/DNS settings and the resolver cache.'],
+    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew [Wi-Fi]]', 'IP・DNS 設定とキャッシュを確認', 'Inspect IP/DNS settings and the resolver cache.'],
     ['ping', 'ping [-n 1..10] [-4] <host>', 'ICMP 応答を確認（アプリの正常性は別途確認）', 'Check ICMP replies; success does not prove application health.'],
     ['nslookup', 'nslookup <host> [10.20.0.10] | nslookup -type=SRV _ldap._tcp.dc._msdcs.corp.example', 'DNS サーバーの回答を確認（ローカルキャッシュとは別）', 'Query the DNS server independently of the local resolver cache.'],
     ['tracert', 'tracert [-d] [-4] <host>', '経路の応答を確認（無応答だけでは原因を断定不可）', 'Inspect responding hops; a silent hop alone does not identify a fault.'],
-    ['route', 'route print', 'ルーティングテーブルを表示', 'Display the routing table.'],
+    ['route', 'route print [-4]', 'IPv4 ルーティングテーブルを表示', 'Display the IPv4 routing table.'],
     ['arp', 'arp -a', '近隣 IP と MAC アドレスの対応を表示', 'Display cached local-neighbor IP/MAC mappings.'],
     ['pathping', 'pathping [-d] [-4] <host>', '経路と ICMP 応答の統計を確認', 'Inspect route and ICMP response statistics.'],
     ['netstat', 'netstat [-a] [-n] [-o] | netstat -ano', '接続・待ち受け・PID を表示（接続先のポート試験とは別）', 'Display local connections, listeners and PIDs; this is not a remote port test.'],
-    ['netsh', 'netsh wlan show interfaces|profiles; netsh interface|int ipv4|ip show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線 LAN・IPv4・WinHTTP・ファイアウォール設定を確認', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
+    ['netsh', 'netsh wlan show interfaces|interface|profiles; netsh interface|int ipv4|ip show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線 LAN・IPv4・WinHTTP・ファイアウォール設定を確認', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
     ['net use', 'net use', '既存の共有フォルダー接続を一覧表示', 'List existing shared-folder connections.'],
     ['gpresult', 'gpresult /r [/scope user|computer]', '最後に適用されたグループポリシーの結果を確認', 'Inspect the last applied Group Policy results.'],
     ['nltest', 'nltest /dsgetdc:corp.example', 'ドメインコントローラーの検出結果を確認', 'Locate the domain controller.'],

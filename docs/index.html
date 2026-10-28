@@ -23,12 +23,21 @@
 @media(max-width:560px){.course-grid{grid-template-columns:1fr}.course-card{min-height:188px;padding:21px}.course-card h3{font-size:18px}.course-card p{font-size:13px}.course-meta{font-size:12px}.hero h1{font-size:31px}.console .terminal-top{flex-wrap:wrap;gap:8px}.terminal-actions{margin-left:auto}.terminal-actions button{white-space:nowrap}.run-button{white-space:nowrap;flex:none}}
 
 .check-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:15px}.check-actions #lesson-reset{font-size:12px}
+
+/* Explain input mistakes and unmet task conditions without relying on color. */
+.input-warning{margin:10px 0 0;border-left:2px solid #e3be7c;padding:5px 9px;color:#ffe1a9;font:11px/1.8 var(--font);overflow-wrap:anywhere}
+.completion-checklist{margin:16px 0;padding:13px 14px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px}
+.completion-checklist h3{font-size:12px;margin:0 0 9px}
+.condition-list{list-style:none;margin:0;padding:0;font-size:11px;line-height:1.75}
+.condition-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;padding:7px 0;border-top:1px solid #e5ebf3;overflow-wrap:anywhere}
+.condition-list li:first-child{border-top:0}
+.condition-status{font-weight:650;white-space:nowrap}.condition-status.met{color:#17614b}.condition-status.missing{color:#87521a}
 </style>
 </head>
 <body>
   <a class="skip" href="#main">本文へ / Skip to content</a>
   <header class="topbar">
-    <button id="brand" class="brand" aria-label="windowsCLIroom home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>windows<span class="brand-cli">CLI</span>room</span><span class="version">0.1.6</span></button>
+    <button id="brand" class="brand" aria-label="windowsCLIroom home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>windows<span class="brand-cli">CLI</span>room</span><span class="version">0.1.7</span></button>
     <nav aria-label="Main"><button id="home-button" class="nav-button"></button><button id="sandbox-button" class="nav-button"></button><button id="reference-button" class="nav-button"></button><button id="language-button" class="language" lang="en">EN</button><button id="menu-button" class="menu-button" aria-label="Settings / 設定">☰</button></nav>
   </header>
   <div id="storage-warning" class="notice warning" role="status" hidden></div>
@@ -171,7 +180,7 @@
     return null;
   }
 
-  function adapterText(net, all) {
+  function adapterText(net, all, wifiOnly = false) {
     const a = net.adapter;
     const out = ['Windows IP Configuration'];
     if (all) out.push('', '   Host Name . . . . . . . . . . . . : PC-014', '   Primary Dns Suffix  . . . . . . . : corp.example', '   Node Type . . . . . . . . . . . . : Hybrid');
@@ -182,7 +191,7 @@
       out.push('   IPv4 Address. . . . . . . . . . . : ' + a.ip, '   Subnet Mask . . . . . . . . . . . : ' + a.mask, '   Default Gateway . . . . . . . . . : ' + a.gateway);
       if (all) out.push('   DHCP Server . . . . . . . . . . . : ' + a.gateway, '   DNS Servers . . . . . . . . . . . : ' + a.dns, '   NetBIOS over Tcpip. . . . . . . . : Enabled');
     }
-    if (net.vpn.connected) {
+    if (net.vpn.connected && !wifiOnly) {
       out.push('', 'PPP adapter CORP-VPN:', '', '   Connection-specific DNS Suffix  . : corp.example');
       if (all) out.push('   Description . . . . . . . . . . . : CORP-VPN', '   DHCP Enabled. . . . . . . . . . . : No');
       out.push('   IPv4 Address. . . . . . . . . . . : ' + net.vpn.ip, '   Subnet Mask . . . . . . . . . . . : 255.255.255.255', '   Default Gateway . . . . . . . . . :');
@@ -192,9 +201,11 @@
   }
 
   function ipconfig(net, args) {
-    const usage = 'ipconfig [/all | /displaydns | /flushdns | /renew]';
-    if (args.length > 1) return unsupported(usage);
+    const usage = 'ipconfig [/all | /displaydns | /flushdns | /renew [Wi-Fi]]';
     const mode = (args[0] || '').toLowerCase();
+    // /renew accepts an adapter name; this model has one DHCP adapter.
+    // https://learn.microsoft.com/windows-server/administration/windows-commands/ipconfig
+    if (args.length > 1 && !(mode === '/renew' && args.length === 2 && args[1].toLowerCase() === net.adapter.name.toLowerCase())) return unsupported(usage);
     if (!mode || mode === '/all') return ok(adapterText(net, mode === '/all'));
     if (mode === '/displaydns') {
       const out = ['Windows IP Configuration'];
@@ -209,7 +220,7 @@
     if (mode === '/renew') {
       if (!net.adapter.connected) return fail('No operation can be performed on Wi-Fi while it has its media disconnected.');
       net.adapter.leaseRenewals += 1;
-      return ok(adapterText(net, false), ['DHCP lease renewed; manually configured DNS is unchanged']);
+      return ok(adapterText(net, false, args.length === 2), ['DHCP lease renewed; manually configured DNS is unchanged']);
     }
     return unsupported(usage);
   }
@@ -267,9 +278,12 @@
     if (srv && host !== '_ldap._tcp.dc._msdcs.corp.example') return unsupported(usage);
     const target = srv ? resolve(net, 'dc01.corp.example', false, dns) : resolve(net, host, false, dns);
     if (target.error === 'unsupported') return targetError(target, 'nslookup');
-    const heading = 'Server:  ' + (dns === '10.20.0.10' ? 'dc01.corp.example' : 'UnKnown') + '\nAddress:  ' + dns;
+    // A configured address is still shown while disconnected, but the model
+    // cannot establish the server's name without a reachable DNS server.
+    const serverName = dns === '10.20.0.10' && net.adapter.connected && reachable(net, dns) ? 'dc01.corp.example' : 'UnKnown';
+    const heading = 'Server:  ' + serverName + '\nAddress:  ' + dns;
     if (target.error === 'nxdomain') return {stdout: heading, stderr: '*** UnKnown can\'t find ' + host + ': Non-existent domain', code: 1};
-    if (target.error || !net.adapter.connected || !reachable(net, dns) || !['10.20.0.10', '192.168.50.1'].includes(dns)) return {stdout: heading + '\n\nDNS request timed out.\n    timeout was 2 seconds.', stderr: '*** Request to ' + (dns === '10.20.0.10' ? 'dc01.corp.example' : 'UnKnown') + ' timed-out', code: 1};
+    if (target.error || !net.adapter.connected || !reachable(net, dns) || !['10.20.0.10', '192.168.50.1'].includes(dns)) return {stdout: heading + '\n\nDNS request timed out.\n    timeout was 2 seconds.', stderr: '*** Request to ' + serverName + ' timed-out', code: 1};
     if (srv) return ok(heading + '\n\n' + host + ' SRV service location:\n          priority = 0\n          weight = 100\n          port = 389\n          svr hostname = dc01.corp.example\ndc01.corp.example internet address = 10.20.0.10');
     return ok(heading + '\n\nName:    ' + target.host + '\nAddress:  ' + target.ip);
   }
@@ -303,7 +317,9 @@
   }
 
   function route(net, args) {
-    if (args.length !== 1 || args[0].toLowerCase() !== 'print') return unsupported('route print');
+    const words = args.map(arg => arg.toLowerCase());
+    if (!(words.length === 1 && words[0] === 'print') &&
+      !(words.length === 2 && words.includes('print') && words.includes('-4'))) return unsupported('route print [-4] (this simulator models IPv4 only)');
     const a = net.adapter;
     const out = ['Interface List', ' 12...02 20 00 00 00 14 ......Virtual Wi-Fi Adapter'];
     if (net.vpn.connected) out.push(' 24...........................CORP-VPN');
@@ -346,6 +362,9 @@
     if (['int', 'interface'].includes(words[0]) && ['ip', 'ipv4'].includes(words[1])) {
       words[0] = 'interface'; words[1] = 'ipv4';
     }
+    // The single supported WLAN abbreviation is unambiguous in real NetShell.
+    // https://learn.microsoft.com/previous-versions/windows/desktop/netshell/netshell-and-command-abbreviation
+    if (words.length === 3 && words[0] === 'wlan' && words[1] === 'show' && words[2] === 'interface') words[2] = 'interfaces';
     const key = words.join(' ');
     const a = net.adapter;
     if (key === 'wlan show interfaces') return ok(lines(['There is 1 interface on the system:', '', '    Name                   : Wi-Fi', '    Description            : Virtual Wi-Fi Adapter', '    Physical address       : ' + a.mac.toLowerCase().replace(/-/g, ':'), '    State                  : ' + (a.connected ? 'connected' : 'disconnected'), ...(a.connected ? ['    SSID                   : ' + a.ssid, '    Network type           : Infrastructure', '    Radio type             : 802.11ac', '    Authentication         : ' + (net.vpn.connected ? 'WPA2-Personal' : 'WPA2-Enterprise'), '    Channel                : 36', '    Receive rate (Mbps)    : 866.7', '    Transmit rate (Mbps)   : 866.7', '    Signal                 : 92%', '    Profile                : ' + a.ssid] : [])]));
@@ -471,15 +490,15 @@
   }
 
   const reference = [
-    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew]', 'IP・DNS 設定とキャッシュを確認', 'Inspect IP/DNS settings and the resolver cache.'],
+    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew [Wi-Fi]]', 'IP・DNS 設定とキャッシュを確認', 'Inspect IP/DNS settings and the resolver cache.'],
     ['ping', 'ping [-n 1..10] [-4] <host>', 'ICMP 応答を確認（アプリの正常性は別途確認）', 'Check ICMP replies; success does not prove application health.'],
     ['nslookup', 'nslookup <host> [10.20.0.10] | nslookup -type=SRV _ldap._tcp.dc._msdcs.corp.example', 'DNS サーバーの回答を確認（ローカルキャッシュとは別）', 'Query the DNS server independently of the local resolver cache.'],
     ['tracert', 'tracert [-d] [-4] <host>', '経路の応答を確認（無応答だけでは原因を断定不可）', 'Inspect responding hops; a silent hop alone does not identify a fault.'],
-    ['route', 'route print', 'ルーティングテーブルを表示', 'Display the routing table.'],
+    ['route', 'route print [-4]', 'IPv4 ルーティングテーブルを表示', 'Display the IPv4 routing table.'],
     ['arp', 'arp -a', '近隣 IP と MAC アドレスの対応を表示', 'Display cached local-neighbor IP/MAC mappings.'],
     ['pathping', 'pathping [-d] [-4] <host>', '経路と ICMP 応答の統計を確認', 'Inspect route and ICMP response statistics.'],
     ['netstat', 'netstat [-a] [-n] [-o] | netstat -ano', '接続・待ち受け・PID を表示（接続先のポート試験とは別）', 'Display local connections, listeners and PIDs; this is not a remote port test.'],
-    ['netsh', 'netsh wlan show interfaces|profiles; netsh interface|int ipv4|ip show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線 LAN・IPv4・WinHTTP・ファイアウォール設定を確認', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
+    ['netsh', 'netsh wlan show interfaces|interface|profiles; netsh interface|int ipv4|ip show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線 LAN・IPv4・WinHTTP・ファイアウォール設定を確認', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
     ['net use', 'net use', '既存の共有フォルダー接続を一覧表示', 'List existing shared-folder connections.'],
     ['gpresult', 'gpresult /r [/scope user|computer]', '最後に適用されたグループポリシーの結果を確認', 'Inspect the last applied Group Policy results.'],
     ['nltest', 'nltest /dsgetdc:corp.example', 'ドメインコントローラーの検出結果を確認', 'Locate the domain controller.'],
@@ -512,6 +531,7 @@
   const reference = [
     ['help', 'help [command]', '対応コマンドと使い方を表示', 'List supported commands or their syntax'],
     ['cls', 'cls', '端末の表示を消去', 'Clear the terminal display'],
+    ['exit', 'exit', '教材の終了方法を案内', 'Explain how to leave the simulator'],
     ['echo', 'echo text', '文字列を表示（> と >> でファイルに記録）', 'Print text; use > or >> to save it'],
     ['cd', 'cd [/d] [path] | D:', '現在のフォルダーを表示・移動', 'Show or change the working directory'],
     ['dir', 'dir [path] [/a] [/b] [/s]', 'フォルダーの内容を表示', 'List files and directories'],
@@ -556,6 +576,23 @@
   // Accept Japanese keyboard yen signs only at user-entered path boundaries.
   // Keep command text, search patterns, URLs and stored canonical paths intact.
   function inputPath(value) { return value.replace(/[\/\u00a5\uffe5]/g, '\\'); }
+
+  // Advisory only: these characters may be intentional text or valid filename
+  // characters. Never normalize them into executable syntax or change user data.
+  function inputWarning(line, language = 'en') {
+    if (typeof line !== 'string') return '';
+    const chars = [...new Set(line.match(/[\uff01-\uff5e\u3000\u201c\u201d\u2018\u2019]/g) || [])];
+    if (!chars.length) return '';
+    const examples = chars.slice(0, 8).map(ch => ch === '\u3000' ? (language === 'ja' ? '全角スペース' : 'full-width space') : ch).join(' ');
+    return language === 'ja'
+      ? '[入力のヒント] 全角文字・スマート引用符（' + examples + '）が含まれています。コマンド名・区切り・引用符に使う文字は半角に直してください。本文やファイル名は自動変換しません。'
+      : '[Input hint] Full-width characters or smart quotes (' + examples + ') are present. Use ASCII characters for command names, separators and quotes. Text and file names are not converted automatically.';
+  }
+  function singleQuoteHint(language) {
+    return language === 'ja'
+      ? '[入力のヒント] CMD では \' はパスを囲む引用符として使えません。空白を含むパス全体を半角の " で囲んでください。'
+      : '[Input hint] Single quotes (\') do not group paths in CMD. Enclose the whole path containing spaces in ASCII double quotes (").';
+  }
 
   function resolve(session, input) {
     cleanString(input, 512, 'path');
@@ -676,7 +713,7 @@
         if (redir.append) i++;
         continue;
       }
-      if (!quoted && /\s/.test(c)) { flush(); continue; }
+      if (!quoted && /[ \t]/.test(c)) { flush(); continue; }
       word += c; hasWord = true;
     }
     if (quoted) throw new Error('[Simulator] A closing double quote is missing.');
@@ -690,6 +727,10 @@
       if (segments.length > 16 || segment.tokens.length > 256) throw new Error('[Simulator] A command line may have at most 16 pipeline stages and 256 arguments.');
       segment.tokens = segment.tokens.map(token => token.replace(/%([^%]+)%/g, (whole, key) => own(env, key.toUpperCase()) ? env[key.toUpperCase()] : whole));
       if (segment.redir) segment.redir.path = segment.redir.path.replace(/%([^%]+)%/g, (whole, key) => own(env, key.toUpperCase()) ? env[key.toUpperCase()] : whole);
+      // A small explicit set of CMD's compact command spellings. Keep unknown
+      // executable names intact, and record normalized arguments for grading.
+      const compact = /^(cd|chdir)(\.\.|[\\\u00a5\uffe5].*)$/i.exec(segment.tokens[0]) || /^(dir|ipconfig)(\/.*)$/i.exec(segment.tokens[0]);
+      if (compact) segment.tokens.splice(0, 1, compact[1], compact[2]);
     }
     return segments;
   }
@@ -744,7 +785,10 @@
     // patterns, options, and shell redirection targets must not become evidence
     // that a command inspected a particular file.
     const pathOf = (input, fromInput = true) => {
-      const resolved = resolve(session, fromInput ? inputPath(input) : input), path = get(session, resolved)?.path || resolved;
+      let resolved;
+      try { resolved = resolve(session, fromInput ? inputPath(input) : input); }
+      catch (error) { if (fromInput && (/^'/.test(input) || /'$/.test(input))) throw new Error(singleQuoteHint(language)); throw error; }
+      const path = get(session, resolved)?.path || resolved;
       context.resolvedPaths.push(path);
       return path;
     };
@@ -756,6 +800,9 @@
     switch (name) {
       case 'help': return args.length > 1 ? unsupported(name) : args.length ? commandHelp(canonical(args[0]), language) : ok((language === 'ja' ? 'windowsCLIroom — 対応する Windows CMD コマンド\n\n' : 'windowsCLIroom — supported Windows CMD subset\n\n') + allReferences().map(r => r.name.padEnd(12) + (language === 'ja' ? r.summaryJa : r.summaryEn)).join('\n') + (language === 'ja' ? '\n\nhelp コマンド名 で対応書式を表示します。空白を含むパスは二重引用符で囲みます。\n| はテキストを次へ渡し、> は上書き、>> は追記します。\n一覧にある機能だけのシミュレーターです。実際の PC には影響しません。\n' : '\n\nUse help command for syntax. Double quotes group paths; | pipes text; > overwrites and >> appends.\nOnly the listed subset is simulated; no command affects your real computer.\n'));
       case 'cls': return args.length ? unsupported(name) : ok('', ['clear']);
+      case 'exit': return args.length ? unsupported(name, 'use exit without arguments for the simulator guidance') : ok(language === 'ja'
+        ? 'この教材では exit は不要です。終了するときはページを閉じてください。進捗は自動保存され、メニューから書き出すこともできます。\n'
+        : 'You do not need exit in this simulator. Close the page when finished. Progress is autosaved, and you can export it from the menu.\n');
       case 'echo': return !args.length ? ok('ECHO is on.\n') : ['on', 'off'].includes(lower[0]) && args.length === 1 ? unsupported(name, 'echo on/off shell settings') : ok(args.join(' ') + '\n');
       case 'echo.': return args.length ? unsupported(name) : ok('\n');
       case 'cd': {
@@ -782,7 +829,8 @@
       }
       case 'type':
         if (!args.length || args.some(a => a.startsWith('/'))) return unsupported(name);
-        return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join(''));
+        try { return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join('')); }
+        catch (error) { return fail(args.some(arg => /^'|'$/.test(arg)) ? singleQuoteHint(language) : error.message); }
       case 'more':
         if (args.length > 1 || args.some(a => a.startsWith('/'))) return unsupported(name);
         return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join(''));
@@ -828,7 +876,7 @@
       case 'where': {
         if (args.length !== 1 || /[\\/:*?]/.test(args[0])) return unsupported(name);
         const executable = canonical(args[0]);
-        const internal = ['help', 'cls', 'echo', 'cd', 'dir', 'type', 'mkdir', 'copy', 'move', 'ren', 'set', 'ver'];
+        const internal = ['help', 'cls', 'exit', 'echo', 'cd', 'dir', 'type', 'mkdir', 'copy', 'move', 'ren', 'set', 'ver'];
         if (internal.includes(executable) || !allReferences().some(r => r.name === executable)) return fail('INFO: Could not find files for the given pattern(s).');
         return ok('C:\\Windows\\System32\\' + executable + '.exe\n');
       }
@@ -901,7 +949,12 @@
         return ok(events.slice(0, count).map((e, i) => 'Event[' + i + ']:\n  Log Name: System\n  Source: ' + (e.id === 6005 ? 'EventLog' : 'Service Control Manager') + '\n  Date: 2026-10-28T' + e.time + '.000\n  Event ID: ' + e.id + '\n  Level: ' + e.level + '\n  Computer: PC-014.corp.example\n  Description:\n' + e.text).join('\n\n') + '\n');
       }
       case 'icacls': {
-        if (args.length !== 1 || args[0].startsWith('/')) return unsupported(name, 'display only');
+        if (!args.length || args.some(arg => arg.startsWith('/'))) return unsupported(name, 'display only');
+        if (args.length > 1) {
+          const path = pathOf(args[0]);
+          const hint = language === 'ja' ? '[入力のヒント] 空白を含むパス全体を半角の " で囲んでください。' : '[Input hint] Enclose the whole path containing spaces in ASCII double quotes (").';
+          return fail((get(session, path) ? '[Simulator] icacls accepts one path in this room.' : path + ': The system cannot find the file specified.') + '\n' + hint);
+        }
         const path = pathOf(args[0]), file = get(session, path); if (!file) return fail('The system cannot find the file specified.');
         // (I): inherited ACE; (OI)/(CI): inherit to files/subfolders. The restricted
         // folder has an explicit student entry and inherited administrative entries.
@@ -970,7 +1023,8 @@
     if (typeof line !== 'string' || line.length > MAX_LINE || /[\r\n\u0000]/.test(line)) {
       return { ...result, ...fail('[Simulator] Enter one command line of at most 4096 characters.') };
     }
-    if (!line.trim()) return result;
+    if (!/[^ \t]/.test(line)) return result;
+    const warning = inputWarning(line, language);
     let segments;
     try { segments = parse(line, session.env); } catch (error) { result = { ...result, ...fail(error.message, true) }; }
     if (segments) {
@@ -1011,6 +1065,7 @@
       }
       result.stdout = stdin;
     }
+    if (warning) result.stderr = bounded(warning + '\n' + result.stderr);
     session.history.push({ line, stdout: result.stdout, stderr: result.stderr, code: result.code, trace: result.trace, effects: result.effects });
     if (session.history.length > 80) session.history.splice(0, session.history.length - 80);
     while (session.history.length > 1 && JSON.stringify(session.history).length > MAX_HISTORY) session.history.shift();
@@ -1021,8 +1076,8 @@
 
   function complete(session, input) {
     if (typeof input !== 'string' || input.length > MAX_LINE || /[|>&<\r\n]/.test(input)) return [];
-    if (!/\s/.test(input)) return allReferences().map(r => r.name).filter(n => n.startsWith(input.toLowerCase())).sort();
-    const match = /^(.*?)("[^" ]*[^" ]*|"[^"]*|[^\s"]*)$/.exec(input);
+    if (!/[ \t]/.test(input)) return allReferences().map(r => r.name).filter(n => n.startsWith(input.toLowerCase())).sort();
+    const match = /^(.*?)("[^" ]*[^" ]*|"[^"]*|[^ \t"]*)$/.exec(input);
     if (!match) return [];
     const prefix = match[1], fragment = inputPath(match[2].replace(/^"/, ''));
     if (!prefix.trim() || fragment.endsWith('"')) return [];
@@ -1138,7 +1193,7 @@
     return session;
   }
 
-  return { createSession, run, restoreSession, listFiles, complete, reference };
+  return { createSession, run, restoreSession, listFiles, complete, reference, inputWarning };
 });
 
 ;
@@ -1313,7 +1368,7 @@
     ],
     'capstone-stale-portal': [
       opt('社内 DNS の登録を変更し、ポータルの名前解決を修復した。', 'Changed the company DNS record and repaired portal name resolution.', '変更したのは PC のキャッシュです。DNS サーバーのレコードは編集していません。', 'Only the PC’s cache was changed. The DNS server record was not edited.'),
-      opt("キャッシュ更新後の HEAD 応答は 200。", "The HEAD response after refreshing the cache was 200.", '記録は旧キャッシュ・DNS 回答・更新後の HTTP 応答を示しています。', 'The report records the old cache, DNS answer, and post-refresh HTTP response.'),
+      opt("キャッシュ更新後の HEAD 応答で、HTTP 200 を確認した。", "The HEAD request after refreshing the cache returned HTTP 200.", '記録は旧キャッシュ・DNS 回答・更新後の HTTP 応答を示しています。', 'The report records the old cache, DNS answer, and post-refresh HTTP response.'),
       opt('ポータルの本文を取得し、ログイン後の処理まで確認した。', 'Retrieved the portal body and verified the workflow after sign-in.', '-I は HEAD 要求です。本文やログイン後の処理は今回の確認対象に含まれません。', '-I sends HEAD. This check did not retrieve a body or test a signed-in workflow.')
     ],
     'capstone-printing': [
@@ -1373,7 +1428,7 @@
       example: { command: c`cd /d C:\Users\student\Documents`, note: t('この例は Documents へ移動します。課題では移動先を変えます。', 'This example opens Documents. Use the destination in the task instead.') },
       hints: [t('cd だけなら、場所を変更せずに表示します。', 'cd on its own displays the location without moving.'), t('移動先は C:\\Lab です。', 'Your destination is C:\\Lab.'), t('cd の後ろに /d と移動先を書きます。', 'Follow cd with /d and the destination.')],
       solution: ['cd', c`cd /d C:\Lab`], success: t('現在地が C:\\Lab になりました。ここを調査用フォルダーとして使います。', 'Your location is now C:\\Lab, the practice investigation folder.'),
-      verify: { commands: [{ name: 'cd', argsEqual: [] }, check('cd', ['/d', c`C:\Lab`])], orderedCommands: [{ name: 'cd', argsEqual: [] }, check('cd', ['/d', c`C:\Lab`])], cwd: c`C:\Lab` }
+      verify: { commands: [{ name: 'cd', argsEqual: [] }, check('cd', [c`C:\Lab`])], orderedCommands: [{ name: 'cd', argsEqual: [] }, check('cd', [c`C:\Lab`])], cwd: c`C:\Lab` }
     }),
     lesson({
       id: 'drives-and-parent', track: 'basics', title: t('03 · ドライブと一つ上の階層', '03 · Drives and parent folders'),
@@ -1516,7 +1571,7 @@
       example: { command: 'tasklist /fi "PID eq 4320"', note: t('実行中の対象を確認してから終了操作に進みます。', 'Verify the running target before stopping it.') },
       hints: [t('先に PID から NotesApp.exe であることを確認します。', 'First verify that the PID belongs to NotesApp.exe.'), t('終了コマンドは taskkill です。', 'The stop command is taskkill.'), t('今回は /PID 4320 を指定します。/F を付ける必要はありません。', 'Use /PID 4320 here. You do not need /F.')],
       solution: ['tasklist /fi "PID eq 4320"', 'taskkill /PID 4320'], success: t('確認した一つのアプリだけを終了できました。', 'You stopped the one application you had verified.'),
-      verify: { commands: [check('tasklist', ['PID eq 4320'], ['NotesApp.exe']), check('taskkill', ['/PID', '4320'])], orderedCommands: [check('tasklist', ['PID eq 4320'], ['NotesApp.exe']), recheck('taskkill', ['/PID', '4320'])], state: { 'pc.appRunning': false } },
+      verify: { commands: [{ ...check('tasklist'), outputRowTokens: ['NotesApp.exe', '4320'] }, check('taskkill', ['/PID', '4320'])], orderedCommands: [{ ...check('tasklist'), outputRowTokens: ['NotesApp.exe', '4320'] }, recheck('taskkill', ['/PID', '4320'])], state: { 'pc.appRunning': false } },
       question: ask(t('実機で終了操作をする前に確認することは？', 'What should you check before stopping a real process?'), t('プロセスの終了は状態を変える操作です。対象を特定し、影響を確認してから必要な範囲に限定します。', 'Stopping a process changes system state. Identify it and assess the impact before acting.'))
     }),
     lesson({
@@ -1608,7 +1663,7 @@
     lesson({
       id: 'ping-loopback', track: 'network', title: t('25 · 自分自身に ping', '25 · Ping the local loopback'),
       goal: t('127.0.0.1 の意味と ping の確認範囲を知る。', 'Understand 127.0.0.1 and what its ping result can establish.'),
-      explanation: [t('ping は ICMP の応答を確かめるコマンドです。127.0.0.1 は自分自身を指すループバックアドレスです。', 'ping checks for an ICMP response. 127.0.0.1 is the loopback address, which refers to the local machine.'), t('ループバックの応答はローカルの IP 通信の確認です。ケーブル、Wi-Fi、DNS、外部サイトが正常という証明にはなりません。', 'A loopback reply checks local IP communication. It does not prove that the cable, Wi-Fi, DNS, or an external website works.')],
+      explanation: [t('ping は ICMP の応答を確かめるコマンドです。127.0.0.1 は自分自身を指すループバックアドレスです。', 'ping checks for an ICMP response. 127.0.0.1 is the loopback address, which refers to the local machine.'), t('ループバックの応答はローカルの IP 通信の確認です。ケーブル、Wi-Fi、DNS、外部サイトが正常という証明にはなりません。', 'A loopback reply checks local IP communication. It does not prove that the cable, Wi-Fi, DNS, or an external website works.'), t('実機で localhost を指定すると IPv6 の ::1 が選ばれる場合があります。この課題では IPv4 を確認するため、127.0.0.1 を明示します。この教材は IPv4 のみを扱い、localhost も 127.0.0.1 に対応させています。', 'On real Windows, localhost may select the IPv6 loopback ::1. This task explicitly uses 127.0.0.1 to check IPv4. The simulator models IPv4 only and maps localhost to 127.0.0.1 too.')],
       task: t('127.0.0.1 に ping を実行し、分かる範囲を選んでください。', 'Ping 127.0.0.1 and identify what the result tells you.'),
       example: { command: 'ping -n 2 127.0.0.1', note: t('-n 2 は 2 回の送信です。', '-n 2 sends two requests.') },
       hints: [t('対象は自分自身のループバックです。', 'The target is the local loopback.'), t('ping の後ろに 127.0.0.1 を指定します。', 'Follow ping with 127.0.0.1.'), t('応答があっても、まだ外部への接続は試していません。', 'A reply does not mean you have tested an external connection.')],
@@ -1927,7 +1982,7 @@
       hints: [t('System イベントは wevtutil qe System /c:3 /rd:true /f:text です。', 'Query events with wevtutil qe System /c:3 /rd:true /f:text.'), t('イベントを >> で追記したら、net start Spooler を実行します。', 'Append the events with >>, then run net start Spooler.'), t('sc.exe query Spooler の再実行結果を同じファイルへ追記します。', 'Append a second sc.exe query Spooler result to the same file.')],
       solution: [c`sc.exe query Spooler > C:\Lab\Reports\printing.txt`, c`wevtutil qe System /c:3 /rd:true /f:text >> C:\Lab\Reports\printing.txt`, 'net start Spooler', c`sc.exe query Spooler >> C:\Lab\Reports\printing.txt`],
       success: t('サービスの開始を再照会で確認し、実際の印刷テストへ渡せる記録を残せました。', 'You verified service startup and saved evidence for a follow-up print test.'),
-      session: { scenario: 'service-stopped' }, verify: { commands: [check('sc', ['query', 'Spooler'], ['STOPPED']), check('wevtutil', ['qe', 'System']), check('net', ['start', 'Spooler']), check('sc', ['query', 'Spooler'], ['RUNNING'])], orderedCommands: [check('sc', ['query', 'Spooler'], ['STOPPED']), check('wevtutil', ['qe', 'System', '/c:3', '/rd:true', '/f:text']), recheck('net', ['start', 'Spooler']), check('sc', ['query', 'Spooler'], ['RUNNING'])], state: { 'pc.spoolerRunning': true }, files: [{ path: c`C:\Lab\Reports\printing.txt`, includes: ['STOPPED', 'RUNNING'] }] },
+      session: { scenario: 'service-stopped' }, verify: { commands: [check('sc', ['query', 'Spooler'], ['STOPPED']), check('wevtutil', ['qe', 'System', '/c:3', '/rd:true', '/f:text']), check('net', ['start', 'Spooler']), check('sc', ['query', 'Spooler'], ['RUNNING'])], orderedCommands: [check('sc', ['query', 'Spooler'], ['STOPPED']), check('wevtutil', ['qe', 'System', '/c:3', '/rd:true', '/f:text']), recheck('net', ['start', 'Spooler']), check('sc', ['query', 'Spooler'], ['RUNNING'])], state: { 'pc.spoolerRunning': true }, files: [{ path: c`C:\Lab\Reports\printing.txt`, includes: ['STOPPED', 'RUNNING', 'Event[0]:', 'Event[1]:', 'Event[2]:', 'Log Name: System'] }] },
       question: ask(t('現時点で報告できることは？', 'What can be reported at this point?'), t('演習内で測定したことと未確認のことを分けて報告します。サービス開始だけでは物理的な印刷の成功を証明できません。', 'Distinguish measured results from untested behavior. Starting the service does not prove a physical print succeeded.'))
     }),
     lesson({
@@ -1951,10 +2006,71 @@
       hints: [t('nslookup の対象は intranet.corp.example です。', 'The nslookup target is intranet.corp.example.'), t('DC の確認は nltest /dsgetdc:corp.example です。', 'Check DC discovery with nltest /dsgetdc:corp.example.'), t('route print にある 10.20.0.10 への個別経路と、ポータル 10.20.0.20 を比較します。', 'Compare the specific route to 10.20.0.10 with the portal address 10.20.0.20.')],
       solution: [c`ipconfig /all > C:\Lab\Reports\vpn.txt`, c`nslookup intranet.corp.example >> C:\Lab\Reports\vpn.txt`, c`nltest /dsgetdc:corp.example >> C:\Lab\Reports\vpn.txt`, c`route print >> C:\Lab\Reports\vpn.txt`],
       success: t('接続済みという表示に頼らず、宛先ごとの違いを説明できる証拠をまとめました。', 'You went beyond “connected” and collected evidence that explains why different destinations behave differently.'),
-      session: { scenario: 'vpn-route' }, verify: { commands: [check('ipconfig', ['/all']), check('nslookup', ['intranet.corp.example']), check('nltest', ['/dsgetdc:corp.example']), check('route', ['print'])], files: [{ path: c`C:\Lab\Reports\vpn.txt`, includes: ['10.20.0.20', '10.20.0.10', 'IPv4 Route Table'] }] },
+      session: { scenario: 'vpn-route' }, verify: { commands: [check('ipconfig', ['/all']), check('nslookup', ['intranet.corp.example']), check('nltest', ['/dsgetdc:corp.example']), check('route', ['print'])], files: [{ path: c`C:\Lab\Reports\vpn.txt`, includes: ['10.20.0.20', '10.20.0.10', 'IPv4 Route Table', 'PPP adapter CORP-VPN:', 'Windows IP Configuration'] }] },
       question: ask(t('引き継ぎ内容として適切なのは？', 'Which handoff matches the evidence?'), t('DC への個別経路と、他の社内ホストへの経路は別です。確認した事実・不足している経路・未実施の修復を明確に伝えます。', 'A specific DC route is separate from routes to other internal hosts. State the observed facts, the missing route, and that no repair has yet been applied.'))
     })
   ];
+  // Display-only labels are separate from grading rules and excluded from evidence signatures.
+  const verificationLabels = {
+    "help-first": {"commands": [{"ja": "help でコマンド一覧を表示", "en": "Display the command list with help"}, {"ja": "help dir で dir の使い方を表示", "en": "Display dir usage with help dir"}], "orderedCommands": [{"ja": "help でコマンド一覧を表示", "en": "Display the command list with help"}, {"ja": "help dir で dir の使い方を表示", "en": "Display dir usage with help dir"}]},
+    "current-directory": {"commands": [{"ja": "cd で現在地を表示", "en": "Display the current folder with cd"}, {"ja": "C:\\Lab へ移動", "en": "Move to C:\\Lab"}], "orderedCommands": [{"ja": "cd で現在地を表示", "en": "Display the current folder with cd"}, {"ja": "C:\\Lab へ移動", "en": "Move to C:\\Lab"}], "cwd": {"ja": "現在地を C:\\Lab にする", "en": "End in C:\\Lab"}},
+    "drives-and-parent": {"commands": [], "orderedCommands": [{"ja": "D:\\Support にいる状態で ticket.txt を読む", "en": "Read ticket.txt while in D:\\Support"}, {"ja": "D:\\Support から cd .. で D:\\ へ移動", "en": "Use cd .. from D:\\Support to reach D:\\"}], "cwd": {"ja": "現在地を D:\\ にする", "en": "End in D:\\"}},
+    "list-files": {"commands": [{"ja": "C:\\Lab を /a 付きで一覧表示", "en": "List C:\\Lab with /a"}, {"ja": "C:\\Lab\\Logs を一覧表示", "en": "List C:\\Lab\\Logs"}]},
+    "quoted-path": {"commands": [{"ja": "type で C:\\Lab\\Shared Files\\guide.txt を読む", "en": "Read C:\\Lab\\Shared Files\\guide.txt with type"}]},
+    "read-a-log": {"commands": [{"ja": "more で C:\\Lab\\Logs\\app.log を読む", "en": "Read C:\\Lab\\Logs\\app.log with more"}]},
+    "make-a-working-copy": {"commands": [{"ja": "C:\\Lab\\Work を作成", "en": "Create C:\\Lab\\Work"}, {"ja": "readme.txt を C:\\Lab\\Work\\readme.txt へコピー", "en": "Copy readme.txt to C:\\Lab\\Work\\readme.txt"}], "files": [{"ja": "C:\\Lab\\Work\\readme.txt に元の内容を保存", "en": "Keep the original content in C:\\Lab\\Work\\readme.txt"}, {"ja": "元の C:\\Lab\\readme.txt も保持", "en": "Preserve the original C:\\Lab\\readme.txt"}]},
+    "move-and-rename": {"commands": [{"ja": "draft.txt を Reports へ移動", "en": "Move draft.txt into Reports"}, {"ja": "Reports 内で ticket-1042.txt に名前を変更", "en": "Rename it to ticket-1042.txt inside Reports"}], "files": [{"ja": "C:\\Lab\\Reports\\ticket-1042.txt に作業メモを保持", "en": "Keep the working notes in C:\\Lab\\Reports\\ticket-1042.txt"}]},
+    "save-and-append": {"commands": [{"ja": "echo で PC-014 を出力", "en": "Output PC-014 with echo"}, {"ja": "echo で Printer issue を出力", "en": "Output Printer issue with echo"}, {"ja": "type で C:\\Lab\\Reports\\notes.txt を確認", "en": "Read C:\\Lab\\Reports\\notes.txt with type"}], "files": [{"ja": "C:\\Lab\\Reports\\notes.txt に PC-014 と Printer issue を両方保存", "en": "Save both PC-014 and Printer issue in C:\\Lab\\Reports\\notes.txt"}]},
+    "filter-and-save": {"commands": [{"ja": "type で C:\\Lab\\Logs\\app.log を読む", "en": "Read C:\\Lab\\Logs\\app.log with type"}, {"ja": "findstr で ERROR の行を抽出", "en": "Filter ERROR lines with findstr"}], "files": [{"ja": "C:\\Lab\\Reports\\errors.txt に ERROR の 2 行を保存", "en": "Save both ERROR lines in C:\\Lab\\Reports\\errors.txt"}], "pipelines": [{"ja": "type と findstr をパイプでつなぐ", "en": "Connect type to findstr with a pipe"}]},
+    "environment-and-command-path": {"commands": [{"ja": "set TEMP で一時フォルダーを表示", "en": "Display the temporary folder with set TEMP"}, {"ja": "where で curl.exe の場所を表示", "en": "Locate curl.exe with where"}]},
+    "system-details": {"commands": [{"ja": "ver で Windows の版を表示", "en": "Display the Windows version with ver"}, {"ja": "systeminfo から C:\\Lab\\Reports\\system.txt へ出力を保存", "en": "Redirect systeminfo into C:\\Lab\\Reports\\system.txt"}], "files": [{"ja": "C:\\Lab\\Reports\\system.txt にホスト名と OS 情報を保存", "en": "Save host and OS details in C:\\Lab\\Reports\\system.txt"}]},
+    "machine-and-user": {"commands": [{"ja": "hostname で PC 名を表示", "en": "Display the PC name with hostname"}, {"ja": "whoami で実行ユーザーを表示", "en": "Display the current user with whoami"}]},
+    "list-processes": {"commands": [{"ja": "tasklist でプロセス一覧を表示", "en": "Display the process list with tasklist"}]},
+    "find-a-pid": {"commands": [{"ja": "tasklist の PID フィルターで 4320 を表示", "en": "Use the tasklist PID filter to display 4320"}]},
+    "stop-one-app": {"commands": [{"ja": "tasklist で PID 4320 と NotesApp.exe の行を表示", "en": "Show the PID 4320 / NotesApp.exe row with tasklist"}, {"ja": "taskkill /PID 4320 で対象アプリを終了", "en": "End the target app with taskkill /PID 4320"}], "orderedCommands": [{"ja": "tasklist で PID 4320 と NotesApp.exe の行を表示", "en": "Show the PID 4320 / NotesApp.exe row with tasklist"}, {"ja": "taskkill /PID 4320 で対象アプリを終了", "en": "End the target app with taskkill /PID 4320"}], "state": {"pc.appRunning": {"ja": "対象アプリが停止している", "en": "The target app is stopped"}}},
+    "service-state": {"commands": [{"ja": "sc query で Spooler の STOPPED を確認", "en": "Check Spooler is STOPPED with sc query"}]},
+    "service-configuration": {"commands": [{"ja": "sc qc で Spooler の構成を表示", "en": "Display Spooler configuration with sc qc"}, {"ja": "sc query で Spooler の現在状態を表示", "en": "Display Spooler state with sc query"}]},
+    "recent-system-events": {"commands": [{"ja": "wevtutil で System の新しい 3 件を C:\\Lab\\Reports\\events.txt へ保存", "en": "Save the latest 3 System events to C:\\Lab\\Reports\\events.txt with wevtutil"}], "files": [{"ja": "C:\\Lab\\Reports\\events.txt に PC-014 の System イベントを保存", "en": "Save PC-014 System events in C:\\Lab\\Reports\\events.txt"}]},
+    "read-file-permissions": {"commands": [{"ja": "icacls で Shared Files の権限を表示", "en": "Display Shared Files permissions with icacls"}]},
+    "disk-free-space": {"commands": [{"ja": "fsutil volume diskfree で C: の空き容量を表示", "en": "Display C: free space with fsutil volume diskfree"}]},
+    "ip-address-and-dns": {"commands": [{"ja": "ipconfig /all で IP・DNS 設定を表示", "en": "Display IP and DNS settings with ipconfig /all"}]},
+    "interface-configuration": {"commands": [{"ja": "netsh で IPv4 インターフェイス設定を表示", "en": "Display IPv4 interface settings with netsh"}]},
+    "wifi-connection": {"commands": [{"ja": "netsh wlan show interfaces で無線の状態を表示", "en": "Display wireless state with netsh wlan show interfaces"}, {"ja": "ipconfig /all で接続状態を表示", "en": "Display adapter state with ipconfig /all"}]},
+    "ping-loopback": {"commands": [{"ja": "127.0.0.1 への ping を実行", "en": "Ping 127.0.0.1"}]},
+    "ping-gateway": {"commands": [{"ja": "ipconfig で IP 設定を表示", "en": "Display IP settings with ipconfig"}, {"ja": "10.20.0.1 への ping を実行", "en": "Ping 10.20.0.1"}]},
+    "dns-lookup": {"commands": [{"ja": "nslookup で社内ポータルの回答 10.20.0.20 を確認", "en": "Use nslookup to obtain 10.20.0.20 for the intranet"}]},
+    "compare-dns-servers": {"commands": [{"ja": "ipconfig /all で設定中の DNS を表示", "en": "Display the configured DNS server with ipconfig /all"}, {"ja": "通常の nslookup でタイムアウトを確認", "en": "Observe the default nslookup timeout"}, {"ja": "DNS 10.20.0.10 を指定し、ポータルの回答 10.20.0.20 を確認", "en": "Query DNS 10.20.0.10 and obtain portal address 10.20.0.20"}], "orderedCommands": [{"ja": "通常の nslookup でタイムアウトを確認", "en": "Observe the default nslookup timeout"}, {"ja": "DNS 10.20.0.10 を指定し、ポータルの回答 10.20.0.20 を確認", "en": "Query DNS 10.20.0.10 and obtain portal address 10.20.0.20"}]},
+    "inspect-dns-cache": {"commands": [{"ja": "ipconfig /displaydns で古い値 10.20.0.99 を確認", "en": "Observe stale value 10.20.0.99 with ipconfig /displaydns"}, {"ja": "nslookup で新しい回答 10.20.0.20 を確認", "en": "Obtain fresh answer 10.20.0.20 with nslookup"}]},
+    "trace-a-route": {"commands": [{"ja": "tracert で社内ポータルへの経路を表示", "en": "Trace the intranet route with tracert"}]},
+    "routing-table": {"commands": [{"ja": "ipconfig /all で VPN の接続情報を表示", "en": "Display VPN adapter details with ipconfig /all"}, {"ja": "route print で経路表を表示", "en": "Display the routing table with route print"}]},
+    "arp-neighbors": {"commands": [{"ja": "arp -a で近隣機器の対応表を表示", "en": "Display neighbor mappings with arp -a"}]},
+    "path-loss": {"commands": [{"ja": "pathping で社内ポータルへの経路と統計を表示", "en": "Display intranet path statistics with pathping"}]},
+    "connections-and-pid": {"commands": [{"ja": "netstat -ano で接続と PID を表示", "en": "Display connections and PIDs with netstat -ano"}, {"ja": "tasklist /fi \"PID eq 4240\" で対象行を表示", "en": "Display the matching row with tasklist /fi \"PID eq 4240\""}]},
+    "winhttp-proxy": {"commands": [{"ja": "netsh winhttp show proxy で設定を表示", "en": "Display settings with netsh winhttp show proxy"}]},
+    "firewall-profile": {"commands": [{"ja": "netsh で currentprofile の設定を表示", "en": "Display currentprofile settings with netsh"}]},
+    "curl-headers": {"commands": [{"ja": "curl.exe --version で版を表示", "en": "Display the curl version with --version"}, {"ja": "example.com へ HEAD 要求を送り 200 を確認", "en": "Send HEAD to example.com and observe 200"}]},
+    "curl-detailed-request": {"commands": [{"ja": "curl.exe -v で社内ポータルの接続過程と本文を取得", "en": "Use curl.exe -v to retrieve intranet connection details and body"}]},
+    "mapped-shares": {"commands": [{"ja": "net use で共有フォルダー接続を表示", "en": "Display mapped shares with net use"}]},
+    "domain-user-and-groups": {"commands": [{"ja": "whoami /user でユーザー情報を表示", "en": "Display user details with whoami /user"}, {"ja": "whoami /groups でグループを表示", "en": "Display groups with whoami /groups"}]},
+    "group-policy-results": {"commands": [{"ja": "gpresult /r で CORP-Desktop 適用済み・CORP-Drive-Map 未適用を確認", "en": "Use gpresult /r to observe CORP-Desktop applied and CORP-Drive-Map absent"}]},
+    "locate-domain-controller": {"commands": [{"ja": "nltest で corp.example の DC を検出", "en": "Discover a DC for corp.example with nltest"}]},
+    "domain-dns-records": {"commands": [{"ja": "nslookup で AD の LDAP 用 SRV レコードを照会", "en": "Query the AD LDAP SRV record with nslookup"}]},
+    "time-synchronization": {"commands": [{"ja": "w32tm /query /status で同期状態を表示", "en": "Display synchronization state with w32tm /query /status"}, {"ja": "w32tm /query /source で同期先を表示", "en": "Display the time source with w32tm /query /source"}]},
+    "collect-support-report": {"commands": [{"ja": "systeminfo で PC 情報を取得", "en": "Collect PC details with systeminfo"}, {"ja": "ipconfig /all でネットワーク情報を取得", "en": "Collect network details with ipconfig /all"}, {"ja": "gpresult /r でポリシー結果を取得", "en": "Collect policy results with gpresult /r"}, {"ja": "type で C:\\Lab\\Reports\\support.txt を確認", "en": "Read C:\\Lab\\Reports\\support.txt with type"}], "files": [{"ja": "C:\\Lab\\Reports\\support.txt に PC・DNS・ポリシーの情報を保存", "en": "Save PC, DNS and policy details in C:\\Lab\\Reports\\support.txt"}]},
+    "share-server-diagnosis": {"commands": [{"ja": "net use で共有接続を表示", "en": "Display shared connections with net use"}, {"ja": "nslookup で files.corp.example を照会", "en": "Resolve files.corp.example with nslookup"}, {"ja": "files.corp.example への ping を実行", "en": "Ping files.corp.example"}]},
+    "renew-dhcp-lease": {"commands": [{"ja": "ipconfig /renew でリースを更新", "en": "Renew the lease with ipconfig /renew"}, {"ja": "ipconfig /all で設定を表示", "en": "Display settings with ipconfig /all"}], "orderedCommands": [{"ja": "更新前に ipconfig /all で設定を表示", "en": "Display settings with ipconfig /all before renewal"}, {"ja": "ipconfig /renew でリースを更新", "en": "Renew the lease with ipconfig /renew"}, {"ja": "更新後に ipconfig /all で設定を再確認", "en": "Recheck settings with ipconfig /all after renewal"}]},
+    "refresh-dns-cache": {"commands": [{"ja": "ipconfig /displaydns で古い値 10.20.0.99 を確認", "en": "Observe stale value 10.20.0.99 with ipconfig /displaydns"}, {"ja": "nslookup で新しい回答 10.20.0.20 を確認", "en": "Obtain fresh answer 10.20.0.20 with nslookup"}, {"ja": "ipconfig /flushdns でキャッシュを消去", "en": "Clear the cache with ipconfig /flushdns"}, {"ja": "ポータルへの ping で 10.20.0.20 の応答を確認", "en": "Ping the portal and observe a reply from 10.20.0.20"}], "orderedCommands": [{"ja": "ipconfig /displaydns で古い値 10.20.0.99 を確認", "en": "Observe stale value 10.20.0.99 with ipconfig /displaydns"}, {"ja": "nslookup で新しい回答 10.20.0.20 を確認", "en": "Obtain fresh answer 10.20.0.20 with nslookup"}, {"ja": "ipconfig /flushdns でキャッシュを消去", "en": "Clear the cache with ipconfig /flushdns"}, {"ja": "ポータルへの ping で 10.20.0.20 の応答を確認", "en": "Ping the portal and observe a reply from 10.20.0.20"}]},
+    "start-print-service": {"commands": [{"ja": "sc query で Spooler の STOPPED を確認", "en": "Check Spooler is STOPPED with sc query"}, {"ja": "net start で Spooler を開始", "en": "Start Spooler with net start"}, {"ja": "sc query で Spooler の RUNNING を確認", "en": "Check Spooler is RUNNING with sc query"}], "orderedCommands": [{"ja": "sc query で Spooler の STOPPED を確認", "en": "Check Spooler is STOPPED with sc query"}, {"ja": "net start で Spooler を開始", "en": "Start Spooler with net start"}, {"ja": "sc query で Spooler の RUNNING を確認", "en": "Check Spooler is RUNNING with sc query"}], "state": {"pc.spoolerRunning": {"ja": "Spooler が動作している", "en": "Spooler is running"}}},
+    "refresh-group-policy": {"commands": [{"ja": "gpupdate /force でポリシーを更新", "en": "Refresh policy with gpupdate /force"}, {"ja": "gpresult /r で CORP-Drive-Map の適用を確認", "en": "Confirm CORP-Drive-Map with gpresult /r"}, {"ja": "net use で Z: の割り当てを確認", "en": "Check the Z: mapping with net use"}], "orderedCommands": [{"ja": "更新前に gpresult /r で CORP-Drive-Map がないことを確認", "en": "Before refreshing, check CORP-Drive-Map is absent with gpresult /r"}, {"ja": "gpupdate /force でポリシーを更新", "en": "Refresh policy with gpupdate /force"}, {"ja": "gpresult /r で CORP-Drive-Map の適用を確認", "en": "Confirm CORP-Drive-Map with gpresult /r"}, {"ja": "net use で Z: の割り当てを確認", "en": "Check the Z: mapping with net use"}], "state": {"net.domain.policyCurrent": {"ja": "ポリシーが更新済みである", "en": "Policy is refreshed"}}},
+    "system-file-verification": {"commands": [{"ja": "sfc /verifyonly で整合性違反の結果を確認", "en": "Observe integrity violations with sfc /verifyonly"}]},
+    "windows-image-health": {"commands": [{"ja": "DISM /Online /Cleanup-Image /CheckHealth で repairable を確認", "en": "Observe repairable with DISM /Online /Cleanup-Image /CheckHealth"}]},
+    "capstone-stale-portal": {"commands": [{"ja": "ipconfig /displaydns で古い値 10.20.0.99 を確認", "en": "Observe stale value 10.20.0.99 with ipconfig /displaydns"}, {"ja": "nslookup で新しい回答 10.20.0.20 を確認", "en": "Obtain fresh answer 10.20.0.20 with nslookup"}, {"ja": "ipconfig /flushdns でキャッシュを消去", "en": "Clear the cache with ipconfig /flushdns"}, {"ja": "curl.exe の HEAD 要求でポータルの 200 を確認", "en": "Observe portal status 200 with a curl.exe HEAD request"}], "orderedCommands": [{"ja": "ipconfig /displaydns で古い値 10.20.0.99 を確認", "en": "Observe stale value 10.20.0.99 with ipconfig /displaydns"}, {"ja": "nslookup で新しい回答 10.20.0.20 を確認", "en": "Obtain fresh answer 10.20.0.20 with nslookup"}, {"ja": "ipconfig /flushdns でキャッシュを消去", "en": "Clear the cache with ipconfig /flushdns"}, {"ja": "curl.exe の HEAD 要求でポータルの 200 を確認", "en": "Observe portal status 200 with a curl.exe HEAD request"}], "files": [{"ja": "C:\\Lab\\Reports\\portal.txt に古い値・新しい回答・200 の結果を保存", "en": "Save stale/fresh addresses and status 200 in C:\\Lab\\Reports\\portal.txt"}]},
+    "capstone-printing": {"commands": [{"ja": "sc query で Spooler の STOPPED を確認", "en": "Check Spooler is STOPPED with sc query"}, {"ja": "wevtutil で System の新しい 3 件を表示", "en": "Display the latest 3 System events with wevtutil"}, {"ja": "net start で Spooler を開始", "en": "Start Spooler with net start"}, {"ja": "sc query で Spooler の RUNNING を確認", "en": "Check Spooler is RUNNING with sc query"}], "orderedCommands": [{"ja": "sc query で Spooler の STOPPED を確認", "en": "Check Spooler is STOPPED with sc query"}, {"ja": "wevtutil で System の新しい 3 件を表示", "en": "Display the latest 3 System events with wevtutil"}, {"ja": "net start で Spooler を開始", "en": "Start Spooler with net start"}, {"ja": "sc query で Spooler の RUNNING を確認", "en": "Check Spooler is RUNNING with sc query"}], "files": [{"ja": "C:\\Lab\\Reports\\printing.txt に変更前後の状態と System イベント 3 件を保存", "en": "Save both service states and 3 System events in C:\\Lab\\Reports\\printing.txt"}], "state": {"pc.spoolerRunning": {"ja": "Spooler が動作している", "en": "Spooler is running"}}},
+    "capstone-http-503": {"commands": [{"ja": "nslookup で社内ポータルを照会", "en": "Resolve the intranet with nslookup"}, {"ja": "社内ポータルへの ping を実行", "en": "Ping the intranet"}, {"ja": "curl.exe の HEAD 要求で 503 を確認", "en": "Observe 503 with a curl.exe HEAD request"}], "files": [{"ja": "C:\\Lab\\Reports\\web.txt に 503 の応答を保存", "en": "Save the 503 response in C:\\Lab\\Reports\\web.txt"}]},
+    "capstone-vpn-route": {"commands": [{"ja": "ipconfig /all で VPN の接続情報を表示", "en": "Display VPN adapter details with ipconfig /all"}, {"ja": "nslookup で社内ポータルを照会", "en": "Resolve the intranet with nslookup"}, {"ja": "nltest で DC を検出", "en": "Discover a DC with nltest"}, {"ja": "route print で経路表を表示", "en": "Display the routing table with route print"}], "files": [{"ja": "C:\\Lab\\Reports\\vpn.txt に IP 設定・名前解決・DC・経路表を保存", "en": "Save IP settings, name resolution, DC and routing details in C:\\Lab\\Reports\\vpn.txt"}]}
+  };
+  for (const lesson of lessons) lesson.verify.labels = verificationLabels[lesson.id];
+
   const references = [
     { title: t('Microsoft Learn — Windows コマンド', 'Microsoft Learn — Windows commands'), url: 'https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/windows-commands' },
     { title: t('Microsoft Learn — Windows の curl', 'Microsoft Learn — curl on Windows'), url: 'https://learn.microsoft.com/en-us/windows/curl/' },
@@ -1963,7 +2079,7 @@
     { title: t('Microsoft Learn — Windows Time サービス', 'Microsoft Learn — Windows Time service'), url: 'https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings' },
     { title: t('Microsoft Support — Windows の Wi-Fi 接続問題と IP 構成の更新', 'Microsoft Support — Windows Wi-Fi troubleshooting and IP renewal'), url: 'https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows' }
   ];
-  return { version: '0.1.6', tracks, lessons, references };
+  return { version: '0.1.7', tracks, lessons, references };
 });
 
 ;
@@ -1987,9 +2103,12 @@
       const words = args.map(arg => arg.toLowerCase());
       if (words[0] === 'int') words[0] = 'interface';
       if (words[0] === 'interface' && words[1] === 'ip') words[1] = 'ipv4';
+      if (words.join(' ') === 'wlan show interface') words[2] = 'interfaces';
       return words;
     }
     return args.flatMap(arg => {
+      if (name === 'net' && arg.toLowerCase() === 'print spooler') return ['spooler'];
+      if (name === 'where') return [arg.toLowerCase().replace(/\.exe$/, '')];
       if (name === 'curl') {
         if (Object.prototype.hasOwnProperty.call(curlFlags,arg)) return [curlFlags[arg]];
         if (/^-[Iivf]+$/.test(arg)) return [...arg.slice(1)].map(c=>'-'+c);
@@ -2028,13 +2147,18 @@
     if (c.outputPath !== undefined && norm(trace.outputPath) !== norm(c.outputPath)) return false;
     if (c.outputAppend !== undefined && trace.outputAppend !== c.outputAppend) return false;
     const output = String(trace.output || '').toLowerCase(), error = String(trace.error || '').toLowerCase();
-    return arr(c.outputIncludes).every(v=>output.includes(String(v).toLowerCase())) &&
+    return (!c.outputRowTokens || output.split(/\r?\n/).some(line => {
+      const tokens = line.trim().split(/\s+/);
+      return c.outputRowTokens.every(value => tokens.includes(String(value).toLowerCase()));
+    })) && arr(c.outputIncludes).every(v=>output.includes(String(v).toLowerCase())) &&
       arr(c.outputExcludes).every(v=>!output.includes(String(v).toLowerCase())) &&
       arr(c.errorIncludes).every(v=>error.includes(String(v).toLowerCase()));
   }
   function signature(lesson) {
     let hash = 2166136261;
-    for (const ch of JSON.stringify(lesson.verify || {})) hash = Math.imul(hash ^ ch.charCodeAt(0),16777619) >>> 0;
+    // Labels only describe checks: editing their wording must not discard saved evidence.
+    const { labels, ...conditions } = lesson.verify || {};
+    for (const ch of JSON.stringify(conditions)) hash = Math.imul(hash ^ ch.charCodeAt(0),16777619) >>> 0;
     return 'e1-' + hash.toString(16);
   }
   function emptyEvidence(lesson) {
@@ -2085,14 +2209,15 @@
     const commands = collected.commands, pipelines = collected.pipelines;
     const ordered = collected.ordered === (checks.orderedCommands || []).length;
     const needsRecheck = !ordered && sequence.some((check,index) => check.restartOnRepeat && collected.ordered > index);
-    const stateOk = Object.entries(checks.state || {}).every(([path, expected]) => {
+    const stateEntries = Object.entries(checks.state || {}).map(([path, expected]) => {
       let value = session;
       for (const key of path.split('.')) {
-        if (!value || !Object.prototype.hasOwnProperty.call(value, key)) return false;
+        if (!value || !Object.prototype.hasOwnProperty.call(value, key)) return {path, ok:false};
         value = value[key];
       }
-      return value === expected;
+      return {path, ok:value === expected};
     });
+    const stateOk = stateEntries.every(entry => entry.ok);
     const cwd = !checks.cwd || norm(session.cwd) === norm(checks.cwd);
     const files = (checks.files || []).map(f => {
       const found = Object.values(session.files || {}).find(v => norm(v.path) === norm(f.path) && !v.dir);
@@ -2100,7 +2225,28 @@
     });
     const commandOk = commands.every(Boolean) && pipelines.every(Boolean) && cwd && files.every(Boolean) && ordered && stateOk;
     const answerOk = !lesson.question || answer === lesson.question.answer;
-    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk, needsRecheck };
+    const labels = checks.labels || {}, checklist = [];
+    const add = (key, kind, label, ok) => checklist.push({key,kind,label:label || {ja:'課題の条件を満たす',en:'Meet the task requirement'},ok});
+    const orderedRows = sequence.map((condition,index) => ({condition,index,ok:collected.ordered > index}));
+    const conditionKey = condition => JSON.stringify(Object.fromEntries(Object.entries(condition).filter(([key])=>key!=='restartOnRepeat').sort(([a],[b])=>a.localeCompare(b))));
+    (checks.commands || []).forEach((condition,index) => {
+      const equivalent = orderedRows.filter(row=>conditionKey(row.condition)===conditionKey(condition) ||
+        (labels.commands?.[index] && JSON.stringify(labels.commands[index])===JSON.stringify(labels.orderedCommands?.[row.index])));
+      // Matching rules or identical authored labels describe the same observation. Keep a separate
+      // command failure if older or inconsistent evidence does not establish it.
+      if (equivalent.length && (commands[index] || equivalent.some(row=>!row.ok))) return;
+      add('command-'+index,'command',labels.commands?.[index],commands[index]);
+    });
+    pipelines.forEach((ok,index)=>add('pipeline-'+index,'pipeline',labels.pipelines?.[index],ok));
+    orderedRows.forEach(({index,ok})=>{
+      const label = labels.orderedCommands?.[index];
+      add('ordered-'+index,'ordered',label ? {ja:(index+1)+'. '+label.ja,en:(index+1)+'. '+label.en} : null,ok);
+    });
+    if (checks.cwd) add('cwd','cwd',labels.cwd,cwd);
+    stateEntries.forEach(({path,ok})=>add('state-'+path,'state',labels.state?.[path],ok));
+    files.forEach((ok,index)=>add('file-'+index,'file',labels.files?.[index],ok));
+    if (lesson.question) add('answer','answer',{ja:'結果を読んで解釈の選択肢に正しく回答',en:'Read the results and choose the correct interpretation'},answerOk);
+    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk, needsRecheck, checklist };
   }
   function empty() {
     return { schema: 'windowsCLIroom.progress', version: VERSION, language: 'ja', activeId: '', completed: {}, checkpoints: {} };
@@ -2201,6 +2347,7 @@
     recheckText: ['最新の復旧操作の後に再確認が必要です。課題にある確認コマンドをもう一度実行してください。保存する課題では、再確認の結果も指定ファイルへ記録します。', 'Verification is required after the latest recovery action. Run the task’s verification commands again. If the task requires a report, record the new results in that file too.'],
     completedTitle: ['このレッスンは完了です', 'Lesson completed'], completedText: ['次のレッスンへ進むか、この環境で練習を続けられます。', 'Continue to the next lesson or keep practicing here.'],
     recordTitle: ['完了記録あり · 復習中', 'Previously completed · Practicing again'], recordText: ['完了記録は保存されています。現在の環境で課題を再確認する場合は、条件を満たしてから「結果を確認する」を押してください。', 'Your completion record is saved. To verify this environment again, meet the task requirements and check your work.'],
+    checklistTitle: ['完了までのチェック', 'Completion checklist'], conditionMet: ['達成', 'Done'], conditionMissing: ['未達', 'Not yet'],
     notYet: ['もうひとつ確かめましょう', 'One more thing to check'], needCommands: ['必要な実行結果がまだそろっていません。課題のコマンドや保存先を確認してください。', 'Some evidence is still missing. Check the task, command arguments, and output file paths.'],
     needAnswer: ['コマンドの条件は満たしています。結果が何を示すか、選択肢を確認してください。', 'The command requirements are met. Revisit what the output actually tells you and choose an answer.'],
     wrongAttempts: ['この環境での誤答回数', 'Incorrect answers in this environment'], choiceFeedback: ['選んだ答えについて', 'About your answer'],
@@ -2222,7 +2369,7 @@
     scenario: ['環境を選ぶ', 'Choose a scenario'], scenarioNote: ['切り替えると、練習室の履歴と仮想ファイルを初期化します。', 'Switching resets the playground’s history and virtual files.'],
     ready: ['準備できています', 'Ready to explore'], savedDetail: ['オフラインで利用できます。進捗はこのブラウザだけに保存されます。配布HTMLは変更しません。', 'Works offline. Progress stays in this browser; the distributed HTML file is not modified.'],
     noCandidates: ['補完候補がありません。', 'No completion candidates.'],
-    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.6 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.6 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
+    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.7 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.7 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
   };
   let state = Engine.empty(), view = 'home', currentId = '', composing = false, historyCursor = -1, historyDraft = '';
   let saveTimer, toastTimer, feedback = null, courseSearch = '', courseOpen = false, unreadableProgress = null;
@@ -2315,7 +2462,7 @@
     return `<div class="breadcrumb"><span>${escape(loc(tr.title))} · ${String(index + 1).padStart(2, '0')} / ${Data.lessons.length}</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${escape(loc(l.title))}</h1><p class="lesson-goal">${escape(loc(l.goal))}</p><div class="lesson-explanation">${l.explanation.map(p => `<p>${escape(loc(p))}</p>`).join('')}</div><div class="example"><p class="label">${t('example')}</p><pre>${escape(loc(l.example.command))}</pre><p class="example-note">${escape(loc(l.example.note))}</p><button class="small" style="margin-top:9px" data-insert="${escape(loc(l.example.command))}">${t('fillExample')}</button></div><div class="task"><p class="label">${t('task')}</p><p>${escape(loc(l.task))}</p></div><div id="hints"></div>${l.question ? `<section class="question"><p class="label">${t('interpretation')}</p><fieldset><legend>${escape(loc(l.question.prompt))}</legend>${l.question.choices.map(ch => `<label class="choice"><input type="radio" name="answer" value="${escape(ch.id)}" ${cp().answer === ch.id ? 'checked' : ''}><span>${escape(loc(ch.text))}</span></label>`).join('')}</fieldset></section>` : ''}<div class="check-actions"><button id="check-button" class="primary" data-action="check">${t('check')}</button><button id="lesson-reset" data-action="reset">↺ ${t('resetLesson')}</button></div><div id="feedback" aria-live="polite"></div><div class="lesson-controls"><button class="small" data-action="previous" ${index === 0 ? 'disabled' : ''}>${t('previous')}</button><button id="next-button" class="secondary" data-action="next">${index === Data.lessons.length - 1 ? t('finish') : t('next')}</button></div>`;
   }
   function consoleHTML() {
-    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div></form></div><p class="micro terminal-display-note">${t('terminalDisplay')}</p><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
+    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" aria-describedby="input-warning" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div><p id="input-warning" class="input-warning" role="status" aria-live="polite" hidden></p></form></div><p class="micro terminal-display-note">${t('terminalDisplay')}</p><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
   }
   function render() {
     setHeader();
@@ -2358,6 +2505,10 @@
       f.innerHTML = `<div class="feedback"><strong>${t('notYet')}</strong>${choice?.feedback ? `<p class="label">${t('choiceFeedback')}</p><p class="choice-feedback">${escape(loc(choice.feedback))}</p>` : `<p>${feedback.commandOk ? t('needAnswer') : t('needCommands')}</p>`}</div>`;
     }
     else f.innerHTML = '';
+    if (!result.ok && (feedback || cp().session.history.length || done)) {
+      const items = result.checklist || [];
+      if (items.length) f.insertAdjacentHTML('beforeend', `<section class="completion-checklist" aria-label="${t('checklistTitle')}"><h3>${t('checklistTitle')}</h3><ul class="condition-list">${items.map(item => `<li data-check-key="${escape(item.key)}" data-check-kind="${escape(item.kind)}" data-ok="${item.ok}"><span class="condition-status ${item.ok ? 'met' : 'missing'}"><span aria-hidden="true">${item.ok ? '✓' : '✗'}</span> ${item.ok ? t('conditionMet') : t('conditionMissing')}</span><span>${escape(loc(item.label))}</span></li>`).join('')}</ul></section>`);
+    }
     if (l.question && cp().attempts.incorrect) f.insertAdjacentHTML('beforeend',`<p class="micro answer-attempts">${t('wrongAttempts')}: ${cp().attempts.incorrect}</p>`);
     const item = document.querySelector(`.lesson-item[data-open="${CSS.escape(l.id)}"]`);
     if (item && done) { item.classList.add('done'); item.querySelector('.status').textContent = '✓'; }
@@ -2381,28 +2532,35 @@
   }
   function runCommand() {
     if (composing) return;
-    const input = $('command-input'), line = input.value.trim();
+    const input = $('command-input'), line = input.value.replace(/^[ \t]+|[ \t]+$/g, '');
     if (!line) return;
     const historyLength = cp().session.history.length;
     try { const result = Shell.run(cp().session, line, {language:state.language}); if (lesson()) cp().evidence = Engine.observe(lesson(),result,cp().evidence); }
     catch (error) { toast(state.language === 'ja' ? 'この入力は処理できませんでした。入力を確認してください。' : 'Could not process this input. Please check the command.'); console.error(error); return; }
     const dropped = Math.max(0, historyLength + 1 - cp().session.history.length);
     visibleFrom[currentId] = Math.max(0, (visibleFrom[currentId] || 0) - dropped);
-    if (/^cls\s*$/i.test(line)) visibleFrom[currentId] = cp().session.history.length;
+    if (/^cls[ \t]*$/i.test(line)) visibleFrom[currentId] = cp().session.history.length;
     input.value = ''; cp().input = ''; historyCursor = -1; historyDraft = ''; feedback = null;
-    renderConsole(); renderFiles(); check(true); renderStatus(); save(); input.focus({ preventScroll: true });
+    renderInputWarning(); renderConsole(); renderFiles(); check(true); renderStatus(); save(); input.focus({ preventScroll: true });
+  }
+  function renderInputWarning() {
+    const box = $('input-warning'), input = $('command-input');
+    if (!box || !input) return;
+    const warning = Shell.inputWarning(input.value, state.language);
+    box.textContent = warning; box.hidden = !warning;
   }
   function bindInput() {
     const input = $('command-input');
+    renderInputWarning();
     $('command-form').addEventListener('submit', e => { e.preventDefault(); if (!composing) runCommand(); });
-    input.addEventListener('input', () => { cp().input = input.value; historyCursor = -1; deferSave(); });
+    input.addEventListener('input', () => { cp().input = input.value; historyCursor = -1; renderInputWarning(); deferSave(); });
     input.addEventListener('compositionstart', () => { composing = true; });
     input.addEventListener('compositionend', () => { composing = false; });
     input.addEventListener('keydown', e => {
       if (e.isComposing || composing || e.keyCode === 229) return;
       if (e.key === 'Enter') { e.preventDefault(); runCommand(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') { e.preventDefault(); visibleFrom[currentId] = cp().session.history.length; renderConsole(); return; }
-      if (e.ctrlKey && e.key.toLowerCase() === 'c' && input.selectionStart === input.selectionEnd) { e.preventDefault(); input.value = ''; cp().input = ''; save(); return; }
+      if (e.ctrlKey && e.key.toLowerCase() === 'c' && input.selectionStart === input.selectionEnd) { e.preventDefault(); input.value = ''; cp().input = ''; renderInputWarning(); save(); return; }
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault(); const commands = cp().session.history.map(h => h.line);
@@ -2410,15 +2568,15 @@
         if (historyCursor < 0) { historyCursor = commands.length; historyDraft = input.value; }
         historyCursor = Math.max(0, Math.min(commands.length, historyCursor + (e.key === 'ArrowUp' ? -1 : 1)));
         input.value = historyCursor === commands.length ? historyDraft : commands[historyCursor];
-        input.setSelectionRange(input.value.length, input.value.length); cp().input = input.value; deferSave();
+        input.setSelectionRange(input.value.length, input.value.length); cp().input = input.value; renderInputWarning(); deferSave();
       } else if (e.key === 'Tab' && !e.shiftKey && input.value) {
         const candidates = Shell.complete ? Shell.complete(cp().session, input.value) : [];
-        if (candidates.length) { e.preventDefault(); input.value = candidates[0]; cp().input = input.value; deferSave(); if (candidates.length > 1) toast(candidates.slice(0, 4).join(' · ')); }
+        if (candidates.length) { e.preventDefault(); input.value = candidates[0]; cp().input = input.value; renderInputWarning(); deferSave(); if (candidates.length > 1) toast(candidates.slice(0, 4).join(' · ')); }
       } else if (e.key === 'ArrowRight' && !e.repeat && !e.shiftKey && !input.value && lesson() && state.completed[currentId] && !window.getSelection()?.toString()) { e.preventDefault(); nextLesson(); }
     });
   }
   function nextLesson() { const i = Data.lessons.indexOf(lesson()); if (i < Data.lessons.length - 1 && i >= 0) openLesson(Data.lessons[i + 1].id, true); else showHome(); }
-  function insert(text, append = false) { const input = $('command-input'); input.value = append ? `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}${text}` : text; cp().input = input.value; input.focus(); input.setSelectionRange(input.value.length, input.value.length); save(); }
+  function insert(text, append = false) { const input = $('command-input'); input.value = append ? `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}${text}` : text; cp().input = input.value; renderInputWarning(); input.focus(); input.setSelectionRange(input.value.length, input.value.length); save(); }
   function openDialog(title, html) { $('dialog-title').textContent = title; $('dialog-body').innerHTML = html; if (!$('dialog').open) $('dialog').showModal(); }
   function showSettings() {
     openDialog(t('settings'), `<section class="settings-section"><h3>${t('progress')}</h3><p>${t('dataInfo')}</p><div class="settings-actions"><button data-action="export">${t('export')}</button><button data-action="import">${t('import')}</button>${unreadableProgress !== null ? `<button data-action="rescue">${t('rescueProgress')}</button>` : ''}</div><p>${t('savedDetail')}</p></section><section class="settings-section"><h3>${t('about')}</h3><p>${escape(t('aboutText')).replace(/\n/g, '<br>')}</p><p>${t('simNote')}</p></section><button class="small danger" data-action="erase">${t('erase')}</button>`);

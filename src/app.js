@@ -41,6 +41,7 @@
     recheckText: ['最新の復旧操作の後に再確認が必要です。課題にある確認コマンドをもう一度実行してください。保存する課題では、再確認の結果も指定ファイルへ記録します。', 'Verification is required after the latest recovery action. Run the task’s verification commands again. If the task requires a report, record the new results in that file too.'],
     completedTitle: ['このレッスンは完了です', 'Lesson completed'], completedText: ['次のレッスンへ進むか、この環境で練習を続けられます。', 'Continue to the next lesson or keep practicing here.'],
     recordTitle: ['完了記録あり · 復習中', 'Previously completed · Practicing again'], recordText: ['完了記録は保存されています。現在の環境で課題を再確認する場合は、条件を満たしてから「結果を確認する」を押してください。', 'Your completion record is saved. To verify this environment again, meet the task requirements and check your work.'],
+    checklistTitle: ['完了までのチェック', 'Completion checklist'], conditionMet: ['達成', 'Done'], conditionMissing: ['未達', 'Not yet'],
     notYet: ['もうひとつ確かめましょう', 'One more thing to check'], needCommands: ['必要な実行結果がまだそろっていません。課題のコマンドや保存先を確認してください。', 'Some evidence is still missing. Check the task, command arguments, and output file paths.'],
     needAnswer: ['コマンドの条件は満たしています。結果が何を示すか、選択肢を確認してください。', 'The command requirements are met. Revisit what the output actually tells you and choose an answer.'],
     wrongAttempts: ['この環境での誤答回数', 'Incorrect answers in this environment'], choiceFeedback: ['選んだ答えについて', 'About your answer'],
@@ -62,7 +63,7 @@
     scenario: ['環境を選ぶ', 'Choose a scenario'], scenarioNote: ['切り替えると、練習室の履歴と仮想ファイルを初期化します。', 'Switching resets the playground’s history and virtual files.'],
     ready: ['準備できています', 'Ready to explore'], savedDetail: ['オフラインで利用できます。進捗はこのブラウザだけに保存されます。配布HTMLは変更しません。', 'Works offline. Progress stays in this browser; the distributed HTML file is not modified.'],
     noCandidates: ['補完候補がありません。', 'No completion candidates.'],
-    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.6 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.6 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
+    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.7 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.7 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
   };
   let state = Engine.empty(), view = 'home', currentId = '', composing = false, historyCursor = -1, historyDraft = '';
   let saveTimer, toastTimer, feedback = null, courseSearch = '', courseOpen = false, unreadableProgress = null;
@@ -155,7 +156,7 @@
     return `<div class="breadcrumb"><span>${escape(loc(tr.title))} · ${String(index + 1).padStart(2, '0')} / ${Data.lessons.length}</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${escape(loc(l.title))}</h1><p class="lesson-goal">${escape(loc(l.goal))}</p><div class="lesson-explanation">${l.explanation.map(p => `<p>${escape(loc(p))}</p>`).join('')}</div><div class="example"><p class="label">${t('example')}</p><pre>${escape(loc(l.example.command))}</pre><p class="example-note">${escape(loc(l.example.note))}</p><button class="small" style="margin-top:9px" data-insert="${escape(loc(l.example.command))}">${t('fillExample')}</button></div><div class="task"><p class="label">${t('task')}</p><p>${escape(loc(l.task))}</p></div><div id="hints"></div>${l.question ? `<section class="question"><p class="label">${t('interpretation')}</p><fieldset><legend>${escape(loc(l.question.prompt))}</legend>${l.question.choices.map(ch => `<label class="choice"><input type="radio" name="answer" value="${escape(ch.id)}" ${cp().answer === ch.id ? 'checked' : ''}><span>${escape(loc(ch.text))}</span></label>`).join('')}</fieldset></section>` : ''}<div class="check-actions"><button id="check-button" class="primary" data-action="check">${t('check')}</button><button id="lesson-reset" data-action="reset">↺ ${t('resetLesson')}</button></div><div id="feedback" aria-live="polite"></div><div class="lesson-controls"><button class="small" data-action="previous" ${index === 0 ? 'disabled' : ''}>${t('previous')}</button><button id="next-button" class="secondary" data-action="next">${index === Data.lessons.length - 1 ? t('finish') : t('next')}</button></div>`;
   }
   function consoleHTML() {
-    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div></form></div><p class="micro terminal-display-note">${t('terminalDisplay')}</p><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
+    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" aria-describedby="input-warning" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div><p id="input-warning" class="input-warning" role="status" aria-live="polite" hidden></p></form></div><p class="micro terminal-display-note">${t('terminalDisplay')}</p><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
   }
   function render() {
     setHeader();
@@ -198,6 +199,10 @@
       f.innerHTML = `<div class="feedback"><strong>${t('notYet')}</strong>${choice?.feedback ? `<p class="label">${t('choiceFeedback')}</p><p class="choice-feedback">${escape(loc(choice.feedback))}</p>` : `<p>${feedback.commandOk ? t('needAnswer') : t('needCommands')}</p>`}</div>`;
     }
     else f.innerHTML = '';
+    if (!result.ok && (feedback || cp().session.history.length || done)) {
+      const items = result.checklist || [];
+      if (items.length) f.insertAdjacentHTML('beforeend', `<section class="completion-checklist" aria-label="${t('checklistTitle')}"><h3>${t('checklistTitle')}</h3><ul class="condition-list">${items.map(item => `<li data-check-key="${escape(item.key)}" data-check-kind="${escape(item.kind)}" data-ok="${item.ok}"><span class="condition-status ${item.ok ? 'met' : 'missing'}"><span aria-hidden="true">${item.ok ? '✓' : '✗'}</span> ${item.ok ? t('conditionMet') : t('conditionMissing')}</span><span>${escape(loc(item.label))}</span></li>`).join('')}</ul></section>`);
+    }
     if (l.question && cp().attempts.incorrect) f.insertAdjacentHTML('beforeend',`<p class="micro answer-attempts">${t('wrongAttempts')}: ${cp().attempts.incorrect}</p>`);
     const item = document.querySelector(`.lesson-item[data-open="${CSS.escape(l.id)}"]`);
     if (item && done) { item.classList.add('done'); item.querySelector('.status').textContent = '✓'; }
@@ -221,28 +226,35 @@
   }
   function runCommand() {
     if (composing) return;
-    const input = $('command-input'), line = input.value.trim();
+    const input = $('command-input'), line = input.value.replace(/^[ \t]+|[ \t]+$/g, '');
     if (!line) return;
     const historyLength = cp().session.history.length;
     try { const result = Shell.run(cp().session, line, {language:state.language}); if (lesson()) cp().evidence = Engine.observe(lesson(),result,cp().evidence); }
     catch (error) { toast(state.language === 'ja' ? 'この入力は処理できませんでした。入力を確認してください。' : 'Could not process this input. Please check the command.'); console.error(error); return; }
     const dropped = Math.max(0, historyLength + 1 - cp().session.history.length);
     visibleFrom[currentId] = Math.max(0, (visibleFrom[currentId] || 0) - dropped);
-    if (/^cls\s*$/i.test(line)) visibleFrom[currentId] = cp().session.history.length;
+    if (/^cls[ \t]*$/i.test(line)) visibleFrom[currentId] = cp().session.history.length;
     input.value = ''; cp().input = ''; historyCursor = -1; historyDraft = ''; feedback = null;
-    renderConsole(); renderFiles(); check(true); renderStatus(); save(); input.focus({ preventScroll: true });
+    renderInputWarning(); renderConsole(); renderFiles(); check(true); renderStatus(); save(); input.focus({ preventScroll: true });
+  }
+  function renderInputWarning() {
+    const box = $('input-warning'), input = $('command-input');
+    if (!box || !input) return;
+    const warning = Shell.inputWarning(input.value, state.language);
+    box.textContent = warning; box.hidden = !warning;
   }
   function bindInput() {
     const input = $('command-input');
+    renderInputWarning();
     $('command-form').addEventListener('submit', e => { e.preventDefault(); if (!composing) runCommand(); });
-    input.addEventListener('input', () => { cp().input = input.value; historyCursor = -1; deferSave(); });
+    input.addEventListener('input', () => { cp().input = input.value; historyCursor = -1; renderInputWarning(); deferSave(); });
     input.addEventListener('compositionstart', () => { composing = true; });
     input.addEventListener('compositionend', () => { composing = false; });
     input.addEventListener('keydown', e => {
       if (e.isComposing || composing || e.keyCode === 229) return;
       if (e.key === 'Enter') { e.preventDefault(); runCommand(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') { e.preventDefault(); visibleFrom[currentId] = cp().session.history.length; renderConsole(); return; }
-      if (e.ctrlKey && e.key.toLowerCase() === 'c' && input.selectionStart === input.selectionEnd) { e.preventDefault(); input.value = ''; cp().input = ''; save(); return; }
+      if (e.ctrlKey && e.key.toLowerCase() === 'c' && input.selectionStart === input.selectionEnd) { e.preventDefault(); input.value = ''; cp().input = ''; renderInputWarning(); save(); return; }
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault(); const commands = cp().session.history.map(h => h.line);
@@ -250,15 +262,15 @@
         if (historyCursor < 0) { historyCursor = commands.length; historyDraft = input.value; }
         historyCursor = Math.max(0, Math.min(commands.length, historyCursor + (e.key === 'ArrowUp' ? -1 : 1)));
         input.value = historyCursor === commands.length ? historyDraft : commands[historyCursor];
-        input.setSelectionRange(input.value.length, input.value.length); cp().input = input.value; deferSave();
+        input.setSelectionRange(input.value.length, input.value.length); cp().input = input.value; renderInputWarning(); deferSave();
       } else if (e.key === 'Tab' && !e.shiftKey && input.value) {
         const candidates = Shell.complete ? Shell.complete(cp().session, input.value) : [];
-        if (candidates.length) { e.preventDefault(); input.value = candidates[0]; cp().input = input.value; deferSave(); if (candidates.length > 1) toast(candidates.slice(0, 4).join(' · ')); }
+        if (candidates.length) { e.preventDefault(); input.value = candidates[0]; cp().input = input.value; renderInputWarning(); deferSave(); if (candidates.length > 1) toast(candidates.slice(0, 4).join(' · ')); }
       } else if (e.key === 'ArrowRight' && !e.repeat && !e.shiftKey && !input.value && lesson() && state.completed[currentId] && !window.getSelection()?.toString()) { e.preventDefault(); nextLesson(); }
     });
   }
   function nextLesson() { const i = Data.lessons.indexOf(lesson()); if (i < Data.lessons.length - 1 && i >= 0) openLesson(Data.lessons[i + 1].id, true); else showHome(); }
-  function insert(text, append = false) { const input = $('command-input'); input.value = append ? `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}${text}` : text; cp().input = input.value; input.focus(); input.setSelectionRange(input.value.length, input.value.length); save(); }
+  function insert(text, append = false) { const input = $('command-input'); input.value = append ? `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}${text}` : text; cp().input = input.value; renderInputWarning(); input.focus(); input.setSelectionRange(input.value.length, input.value.length); save(); }
   function openDialog(title, html) { $('dialog-title').textContent = title; $('dialog-body').innerHTML = html; if (!$('dialog').open) $('dialog').showModal(); }
   function showSettings() {
     openDialog(t('settings'), `<section class="settings-section"><h3>${t('progress')}</h3><p>${t('dataInfo')}</p><div class="settings-actions"><button data-action="export">${t('export')}</button><button data-action="import">${t('import')}</button>${unreadableProgress !== null ? `<button data-action="rescue">${t('rescueProgress')}</button>` : ''}</div><p>${t('savedDetail')}</p></section><section class="settings-section"><h3>${t('about')}</h3><p>${escape(t('aboutText')).replace(/\n/g, '<br>')}</p><p>${t('simNote')}</p></section><button class="small danger" data-action="erase">${t('erase')}</button>`);

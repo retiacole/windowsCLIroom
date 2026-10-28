@@ -17,6 +17,7 @@
   const reference = [
     ['help', 'help [command]', '対応コマンドと使い方を表示', 'List supported commands or their syntax'],
     ['cls', 'cls', '端末の表示を消去', 'Clear the terminal display'],
+    ['exit', 'exit', '教材の終了方法を案内', 'Explain how to leave the simulator'],
     ['echo', 'echo text', '文字列を表示（> と >> でファイルに記録）', 'Print text; use > or >> to save it'],
     ['cd', 'cd [/d] [path] | D:', '現在のフォルダーを表示・移動', 'Show or change the working directory'],
     ['dir', 'dir [path] [/a] [/b] [/s]', 'フォルダーの内容を表示', 'List files and directories'],
@@ -61,6 +62,23 @@
   // Accept Japanese keyboard yen signs only at user-entered path boundaries.
   // Keep command text, search patterns, URLs and stored canonical paths intact.
   function inputPath(value) { return value.replace(/[\/\u00a5\uffe5]/g, '\\'); }
+
+  // Advisory only: these characters may be intentional text or valid filename
+  // characters. Never normalize them into executable syntax or change user data.
+  function inputWarning(line, language = 'en') {
+    if (typeof line !== 'string') return '';
+    const chars = [...new Set(line.match(/[\uff01-\uff5e\u3000\u201c\u201d\u2018\u2019]/g) || [])];
+    if (!chars.length) return '';
+    const examples = chars.slice(0, 8).map(ch => ch === '\u3000' ? (language === 'ja' ? '全角スペース' : 'full-width space') : ch).join(' ');
+    return language === 'ja'
+      ? '[入力のヒント] 全角文字・スマート引用符（' + examples + '）が含まれています。コマンド名・区切り・引用符に使う文字は半角に直してください。本文やファイル名は自動変換しません。'
+      : '[Input hint] Full-width characters or smart quotes (' + examples + ') are present. Use ASCII characters for command names, separators and quotes. Text and file names are not converted automatically.';
+  }
+  function singleQuoteHint(language) {
+    return language === 'ja'
+      ? '[入力のヒント] CMD では \' はパスを囲む引用符として使えません。空白を含むパス全体を半角の " で囲んでください。'
+      : '[Input hint] Single quotes (\') do not group paths in CMD. Enclose the whole path containing spaces in ASCII double quotes (").';
+  }
 
   function resolve(session, input) {
     cleanString(input, 512, 'path');
@@ -181,7 +199,7 @@
         if (redir.append) i++;
         continue;
       }
-      if (!quoted && /\s/.test(c)) { flush(); continue; }
+      if (!quoted && /[ \t]/.test(c)) { flush(); continue; }
       word += c; hasWord = true;
     }
     if (quoted) throw new Error('[Simulator] A closing double quote is missing.');
@@ -195,6 +213,10 @@
       if (segments.length > 16 || segment.tokens.length > 256) throw new Error('[Simulator] A command line may have at most 16 pipeline stages and 256 arguments.');
       segment.tokens = segment.tokens.map(token => token.replace(/%([^%]+)%/g, (whole, key) => own(env, key.toUpperCase()) ? env[key.toUpperCase()] : whole));
       if (segment.redir) segment.redir.path = segment.redir.path.replace(/%([^%]+)%/g, (whole, key) => own(env, key.toUpperCase()) ? env[key.toUpperCase()] : whole);
+      // A small explicit set of CMD's compact command spellings. Keep unknown
+      // executable names intact, and record normalized arguments for grading.
+      const compact = /^(cd|chdir)(\.\.|[\\\u00a5\uffe5].*)$/i.exec(segment.tokens[0]) || /^(dir|ipconfig)(\/.*)$/i.exec(segment.tokens[0]);
+      if (compact) segment.tokens.splice(0, 1, compact[1], compact[2]);
     }
     return segments;
   }
@@ -249,7 +271,10 @@
     // patterns, options, and shell redirection targets must not become evidence
     // that a command inspected a particular file.
     const pathOf = (input, fromInput = true) => {
-      const resolved = resolve(session, fromInput ? inputPath(input) : input), path = get(session, resolved)?.path || resolved;
+      let resolved;
+      try { resolved = resolve(session, fromInput ? inputPath(input) : input); }
+      catch (error) { if (fromInput && (/^'/.test(input) || /'$/.test(input))) throw new Error(singleQuoteHint(language)); throw error; }
+      const path = get(session, resolved)?.path || resolved;
       context.resolvedPaths.push(path);
       return path;
     };
@@ -261,6 +286,9 @@
     switch (name) {
       case 'help': return args.length > 1 ? unsupported(name) : args.length ? commandHelp(canonical(args[0]), language) : ok((language === 'ja' ? 'windowsCLIroom — 対応する Windows CMD コマンド\n\n' : 'windowsCLIroom — supported Windows CMD subset\n\n') + allReferences().map(r => r.name.padEnd(12) + (language === 'ja' ? r.summaryJa : r.summaryEn)).join('\n') + (language === 'ja' ? '\n\nhelp コマンド名 で対応書式を表示します。空白を含むパスは二重引用符で囲みます。\n| はテキストを次へ渡し、> は上書き、>> は追記します。\n一覧にある機能だけのシミュレーターです。実際の PC には影響しません。\n' : '\n\nUse help command for syntax. Double quotes group paths; | pipes text; > overwrites and >> appends.\nOnly the listed subset is simulated; no command affects your real computer.\n'));
       case 'cls': return args.length ? unsupported(name) : ok('', ['clear']);
+      case 'exit': return args.length ? unsupported(name, 'use exit without arguments for the simulator guidance') : ok(language === 'ja'
+        ? 'この教材では exit は不要です。終了するときはページを閉じてください。進捗は自動保存され、メニューから書き出すこともできます。\n'
+        : 'You do not need exit in this simulator. Close the page when finished. Progress is autosaved, and you can export it from the menu.\n');
       case 'echo': return !args.length ? ok('ECHO is on.\n') : ['on', 'off'].includes(lower[0]) && args.length === 1 ? unsupported(name, 'echo on/off shell settings') : ok(args.join(' ') + '\n');
       case 'echo.': return args.length ? unsupported(name) : ok('\n');
       case 'cd': {
@@ -287,7 +315,8 @@
       }
       case 'type':
         if (!args.length || args.some(a => a.startsWith('/'))) return unsupported(name);
-        return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join(''));
+        try { return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join('')); }
+        catch (error) { return fail(args.some(arg => /^'|'$/.test(arg)) ? singleQuoteHint(language) : error.message); }
       case 'more':
         if (args.length > 1 || args.some(a => a.startsWith('/'))) return unsupported(name);
         return ok(filesFromArgs(session, args, stdin, pathOf).map(f => f.content).join(''));
@@ -333,7 +362,7 @@
       case 'where': {
         if (args.length !== 1 || /[\\/:*?]/.test(args[0])) return unsupported(name);
         const executable = canonical(args[0]);
-        const internal = ['help', 'cls', 'echo', 'cd', 'dir', 'type', 'mkdir', 'copy', 'move', 'ren', 'set', 'ver'];
+        const internal = ['help', 'cls', 'exit', 'echo', 'cd', 'dir', 'type', 'mkdir', 'copy', 'move', 'ren', 'set', 'ver'];
         if (internal.includes(executable) || !allReferences().some(r => r.name === executable)) return fail('INFO: Could not find files for the given pattern(s).');
         return ok('C:\\Windows\\System32\\' + executable + '.exe\n');
       }
@@ -406,7 +435,12 @@
         return ok(events.slice(0, count).map((e, i) => 'Event[' + i + ']:\n  Log Name: System\n  Source: ' + (e.id === 6005 ? 'EventLog' : 'Service Control Manager') + '\n  Date: 2026-10-28T' + e.time + '.000\n  Event ID: ' + e.id + '\n  Level: ' + e.level + '\n  Computer: PC-014.corp.example\n  Description:\n' + e.text).join('\n\n') + '\n');
       }
       case 'icacls': {
-        if (args.length !== 1 || args[0].startsWith('/')) return unsupported(name, 'display only');
+        if (!args.length || args.some(arg => arg.startsWith('/'))) return unsupported(name, 'display only');
+        if (args.length > 1) {
+          const path = pathOf(args[0]);
+          const hint = language === 'ja' ? '[入力のヒント] 空白を含むパス全体を半角の " で囲んでください。' : '[Input hint] Enclose the whole path containing spaces in ASCII double quotes (").';
+          return fail((get(session, path) ? '[Simulator] icacls accepts one path in this room.' : path + ': The system cannot find the file specified.') + '\n' + hint);
+        }
         const path = pathOf(args[0]), file = get(session, path); if (!file) return fail('The system cannot find the file specified.');
         // (I): inherited ACE; (OI)/(CI): inherit to files/subfolders. The restricted
         // folder has an explicit student entry and inherited administrative entries.
@@ -475,7 +509,8 @@
     if (typeof line !== 'string' || line.length > MAX_LINE || /[\r\n\u0000]/.test(line)) {
       return { ...result, ...fail('[Simulator] Enter one command line of at most 4096 characters.') };
     }
-    if (!line.trim()) return result;
+    if (!/[^ \t]/.test(line)) return result;
+    const warning = inputWarning(line, language);
     let segments;
     try { segments = parse(line, session.env); } catch (error) { result = { ...result, ...fail(error.message, true) }; }
     if (segments) {
@@ -516,6 +551,7 @@
       }
       result.stdout = stdin;
     }
+    if (warning) result.stderr = bounded(warning + '\n' + result.stderr);
     session.history.push({ line, stdout: result.stdout, stderr: result.stderr, code: result.code, trace: result.trace, effects: result.effects });
     if (session.history.length > 80) session.history.splice(0, session.history.length - 80);
     while (session.history.length > 1 && JSON.stringify(session.history).length > MAX_HISTORY) session.history.shift();
@@ -526,8 +562,8 @@
 
   function complete(session, input) {
     if (typeof input !== 'string' || input.length > MAX_LINE || /[|>&<\r\n]/.test(input)) return [];
-    if (!/\s/.test(input)) return allReferences().map(r => r.name).filter(n => n.startsWith(input.toLowerCase())).sort();
-    const match = /^(.*?)("[^" ]*[^" ]*|"[^"]*|[^\s"]*)$/.exec(input);
+    if (!/[ \t]/.test(input)) return allReferences().map(r => r.name).filter(n => n.startsWith(input.toLowerCase())).sort();
+    const match = /^(.*?)("[^" ]*[^" ]*|"[^"]*|[^ \t"]*)$/.exec(input);
     if (!match) return [];
     const prefix = match[1], fragment = inputPath(match[2].replace(/^"/, ''));
     if (!prefix.trim() || fragment.endsWith('"')) return [];
@@ -643,5 +679,5 @@
     return session;
   }
 
-  return { createSession, run, restoreSession, listFiles, complete, reference };
+  return { createSession, run, restoreSession, listFiles, complete, reference, inputWarning };
 });

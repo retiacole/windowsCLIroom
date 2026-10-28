@@ -17,9 +17,12 @@
       const words = args.map(arg => arg.toLowerCase());
       if (words[0] === 'int') words[0] = 'interface';
       if (words[0] === 'interface' && words[1] === 'ip') words[1] = 'ipv4';
+      if (words.join(' ') === 'wlan show interface') words[2] = 'interfaces';
       return words;
     }
     return args.flatMap(arg => {
+      if (name === 'net' && arg.toLowerCase() === 'print spooler') return ['spooler'];
+      if (name === 'where') return [arg.toLowerCase().replace(/\.exe$/, '')];
       if (name === 'curl') {
         if (Object.prototype.hasOwnProperty.call(curlFlags,arg)) return [curlFlags[arg]];
         if (/^-[Iivf]+$/.test(arg)) return [...arg.slice(1)].map(c=>'-'+c);
@@ -58,13 +61,18 @@
     if (c.outputPath !== undefined && norm(trace.outputPath) !== norm(c.outputPath)) return false;
     if (c.outputAppend !== undefined && trace.outputAppend !== c.outputAppend) return false;
     const output = String(trace.output || '').toLowerCase(), error = String(trace.error || '').toLowerCase();
-    return arr(c.outputIncludes).every(v=>output.includes(String(v).toLowerCase())) &&
+    return (!c.outputRowTokens || output.split(/\r?\n/).some(line => {
+      const tokens = line.trim().split(/\s+/);
+      return c.outputRowTokens.every(value => tokens.includes(String(value).toLowerCase()));
+    })) && arr(c.outputIncludes).every(v=>output.includes(String(v).toLowerCase())) &&
       arr(c.outputExcludes).every(v=>!output.includes(String(v).toLowerCase())) &&
       arr(c.errorIncludes).every(v=>error.includes(String(v).toLowerCase()));
   }
   function signature(lesson) {
     let hash = 2166136261;
-    for (const ch of JSON.stringify(lesson.verify || {})) hash = Math.imul(hash ^ ch.charCodeAt(0),16777619) >>> 0;
+    // Labels only describe checks: editing their wording must not discard saved evidence.
+    const { labels, ...conditions } = lesson.verify || {};
+    for (const ch of JSON.stringify(conditions)) hash = Math.imul(hash ^ ch.charCodeAt(0),16777619) >>> 0;
     return 'e1-' + hash.toString(16);
   }
   function emptyEvidence(lesson) {
@@ -115,14 +123,15 @@
     const commands = collected.commands, pipelines = collected.pipelines;
     const ordered = collected.ordered === (checks.orderedCommands || []).length;
     const needsRecheck = !ordered && sequence.some((check,index) => check.restartOnRepeat && collected.ordered > index);
-    const stateOk = Object.entries(checks.state || {}).every(([path, expected]) => {
+    const stateEntries = Object.entries(checks.state || {}).map(([path, expected]) => {
       let value = session;
       for (const key of path.split('.')) {
-        if (!value || !Object.prototype.hasOwnProperty.call(value, key)) return false;
+        if (!value || !Object.prototype.hasOwnProperty.call(value, key)) return {path, ok:false};
         value = value[key];
       }
-      return value === expected;
+      return {path, ok:value === expected};
     });
+    const stateOk = stateEntries.every(entry => entry.ok);
     const cwd = !checks.cwd || norm(session.cwd) === norm(checks.cwd);
     const files = (checks.files || []).map(f => {
       const found = Object.values(session.files || {}).find(v => norm(v.path) === norm(f.path) && !v.dir);
@@ -130,7 +139,28 @@
     });
     const commandOk = commands.every(Boolean) && pipelines.every(Boolean) && cwd && files.every(Boolean) && ordered && stateOk;
     const answerOk = !lesson.question || answer === lesson.question.answer;
-    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk, needsRecheck };
+    const labels = checks.labels || {}, checklist = [];
+    const add = (key, kind, label, ok) => checklist.push({key,kind,label:label || {ja:'課題の条件を満たす',en:'Meet the task requirement'},ok});
+    const orderedRows = sequence.map((condition,index) => ({condition,index,ok:collected.ordered > index}));
+    const conditionKey = condition => JSON.stringify(Object.fromEntries(Object.entries(condition).filter(([key])=>key!=='restartOnRepeat').sort(([a],[b])=>a.localeCompare(b))));
+    (checks.commands || []).forEach((condition,index) => {
+      const equivalent = orderedRows.filter(row=>conditionKey(row.condition)===conditionKey(condition) ||
+        (labels.commands?.[index] && JSON.stringify(labels.commands[index])===JSON.stringify(labels.orderedCommands?.[row.index])));
+      // Matching rules or identical authored labels describe the same observation. Keep a separate
+      // command failure if older or inconsistent evidence does not establish it.
+      if (equivalent.length && (commands[index] || equivalent.some(row=>!row.ok))) return;
+      add('command-'+index,'command',labels.commands?.[index],commands[index]);
+    });
+    pipelines.forEach((ok,index)=>add('pipeline-'+index,'pipeline',labels.pipelines?.[index],ok));
+    orderedRows.forEach(({index,ok})=>{
+      const label = labels.orderedCommands?.[index];
+      add('ordered-'+index,'ordered',label ? {ja:(index+1)+'. '+label.ja,en:(index+1)+'. '+label.en} : null,ok);
+    });
+    if (checks.cwd) add('cwd','cwd',labels.cwd,cwd);
+    stateEntries.forEach(({path,ok})=>add('state-'+path,'state',labels.state?.[path],ok));
+    files.forEach((ok,index)=>add('file-'+index,'file',labels.files?.[index],ok));
+    if (lesson.question) add('answer','answer',{ja:'結果を読んで解釈の選択肢に正しく回答',en:'Read the results and choose the correct interpretation'},answerOk);
+    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk, needsRecheck, checklist };
   }
   function empty() {
     return { schema: 'windowsCLIroom.progress', version: VERSION, language: 'ja', activeId: '', completed: {}, checkpoints: {} };

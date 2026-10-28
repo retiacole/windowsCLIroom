@@ -1,6 +1,6 @@
 # windowsCLIroom
 
-v0.1.6 — 選択肢の文体、Windows のエラー表示、採点条件を改善しました。日本語では端末の表示も円記号に統一し、復旧操作後に必要な再確認を案内します。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
+v0.1.7 — 初心者が入力しやすい省略形と正しい別解に対応しました。全角記号・引用符の案内と、不足している達成条件のチェックリストを追加しています。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
 
 Windows の一般的な IT トラブルシューティングを、ブラウザーで練習する教材です。Windows 11 のコマンドプロンプト（CMD）を想定し、「説明を読む → コマンドを打つ → 結果を読み取る」を短い課題で学びます。日本語と英語を切り替えられます。
 
@@ -16,11 +16,17 @@ Windows の一般的な IT トラブルシューティングを、ブラウザ�
 
 コースから好きなレッスンを選び、「やってみよう」に沿ってコマンドを実行します。必要に応じて 3 段階のヒントや解答例を表示できます。結果を解釈する問題では、コマンドの実行と選択肢への回答の両方で完了を判定します。
 
+条件が足りないときは、「完了までのチェック」に達成済みと未達の項目を表示します。実行した操作、確認の順序、現在地やサービスの状態、保存するファイルの内容、解釈への回答を個別に確かめられます。復旧操作を繰り返した場合は、その後の確認項目が未達に戻ります。
+
 操作をやり直したいときは、「結果を確認する」の横の「この問題をリセット」を押します。その問題のファイル・操作履歴・回答・ヒントが最初の状態に戻ります。他の問題の進捗と、これまでの完了記録は残ります。
 
 「自由練習」では課題なしで操作できます。Wi-Fi の切断、DNS 設定、DNS キャッシュ、WinHTTP プロキシ、HTTP 503、VPN の経路、ポリシー、印刷サービス、ファイルの権限、システムファイルの異常を切り替えて、結果の違いを確認できます。各レッスンと自由練習は独立した仮想環境です。
 
 入力欄では Enter で実行、上下キーで履歴、Tab でコマンド名・パスの補完ができます。「コマンド帳」または `help` で、この教材が対応する書式を確認できます。
+
+入力に全角の英数字・記号・スペース、スマート引用符（`“ ” ‘ ’`）があると、入力中と実行履歴に案内を表示します。コマンド名・区切り・引用符として使う場合は半角へ直してください。本文やファイル名として意図した文字もあるため、一律に禁止・自動変換はしません。全角スペースは引数の区切りとして扱いません。空白を含むパスを `'` で囲んだ場合や、`icacls` で引用符を忘れた場合も、半角の `"` を使う案内が出ます。
+
+`exit` はページを閉じる方法と進捗保存の案内を表示します。実際のシェルの終了操作は行いません。
 
 日本語の課題文・説明・ヒント・見本・解答例では、`C:¥Lab¥Shared Files¥guide.txt` のようにパス区切りを円記号で表示します。端末のプロンプト・履歴・出力、ファイルのプレビュー、「処理の流れ」も、バックスラッシュを表示時だけ円記号に置き換えます。英語ではバックスラッシュを表示します。見本を入力欄に入れる場合も、画面と同じ表記で実行できます。言語を切り替えても、入力途中のコマンド・保存済みの履歴・ファイルの内容は書き換えません。
 
@@ -45,6 +51,8 @@ Windows のパスの区切りはバックスラッシュ（`\`）です。日本
 `netsh` は無線 LAN・IPv4・WinHTTP・ファイアウォールの状態を確認する用途で扱います。AD の情報は `gpresult`、`nltest`、`w32tm` などで調べます。コマンドの成功だけで原因を断定せず、次に確認する対象を考える構成です。
 
 IPv4 設定の表示では `netsh interface ipv4 show config` に加え、`netsh int ipv4 show config`、`netsh interface ip show config`、`netsh int ip show config` を実行・採点できます。
+
+`cd..`、`cd\`、`dir/a`、`ipconfig/all`、`netsh wlan show interface`、`route print -4`、`ipconfig /renew Wi-Fi` にも対応します。`where curl` と `where curl.exe` は同等です。L02 の同一ドライブ内の移動では `/d` を省略でき、L16 はフィルターなしの `tasklist` で対象の名前と PID を確認する方法、L49 は `net start "Print Spooler"` も採点します。すべての省略形・オプションを再現するものではありません。
 
 Windows 11 には `curl.exe` が同梱されています。Windows PowerShell 5.1 の `curl` エイリアスとの混同を避けるため、教材の例では主に `curl.exe` と表記します。同梱版の機能・バージョンは環境によって異なります。[Microsoft の説明](https://learn.microsoft.com/en-us/windows/curl/) と [curl プロジェクトの Windows 同梱版の説明](https://curl.se/windows/microsoft.html) を参照してください。
 
@@ -83,6 +91,7 @@ PC-014、CORP ドメイン、IP アドレス、ログ、サービスの状態な
 - `findstr` はリテラル検索の範囲です。正規表現は再現せず、`/l` や `/c:` を使った検索に対応します。
 - ファイル操作は仮想 C・D ドライブ内のテキストが対象です。ワイルドカード、UNC パスのファイル操作、ディレクトリのコピー・移動は未対応です。`more` は対話的なページ分割を行いません。
 - ネットワークは登録済みの宛先と故障シナリオだけを再現します。未登録の宛先には未対応と表示します。IPv6、実際の待ち時間、認証、TLS 証明書の検証などは再現しません。
+- `localhost` はこの教材では IPv4 の `127.0.0.1` に固定します。実機では IPv6 の `::1` が使われることもあるため、L25 では IPv4 の確認先を明示します。切断中の `nslookup` は設定中の DNS アドレスと `Server: UnKnown` を表示し、問い合わせのタイムアウトを示します。
 - `ping` は名前解決失敗、送信できない状態、同一 LAN の宛先未到達、タイムアウトを区別して表示します。表示は各シナリオの想定であり、同じ症状なら実機でも必ず同じ文言になるわけではありません。統計は Echo Reply の成功数、終了コードは到達の成否として簡略化しています。実機では統計や終了コードだけで判断せず、応答文と `Reply from` の送信元も読みます。
 - WinHTTP のプロキシ設定を `curl.exe` やブラウザーが自動的に使うとは扱いません。DNS サーバーへの問い合わせとローカル DNS キャッシュも区別します。
 - 1 行の入力は 4,096 文字、パイプは最大 16 段階、仮想ファイルは最大 256 件、1 ファイルは最大 65,536 文字です。履歴は最新 80 件を上限とし、保存量の制限でも古い履歴を削減します。
@@ -169,6 +178,8 @@ As a simulator input aid, typed yen signs `¥` (U+00A5) and `￥` (U+FFE5) are a
 Ping failures use scenario-specific Windows messages, while statistics and exit codes are simplified to Echo Reply success and reachability. On real Windows, read the reply text and source address too. Repeating a recovery action prompts you to verify again; earlier completion records remain saved.
 
 Progress is saved in browser storage. Use **Settings & progress → Export progress / Import progress** to back it up or move it between browsers. Local-file storage behavior varies by browser.
+
+An unmet task shows a bilingual checklist of commands, ordering, current state, report contents and interpretation. Input hints identify full-width characters and smart quotes before execution without rewriting literal text. Full-width spaces do not separate arguments. Compact spellings such as `cd..`, `cd\`, `dir/a` and `ipconfig/all`, and documented command alternatives, are accepted. `localhost` is modeled as IPv4; real Windows may use IPv6 `::1`.
 
 Development requires Node.js 22+. Run `node build.js` and `npm test`. For browser checks, install the development dependencies and Chromium, then run `npm run test:browser`. Manual comparison against a real Windows 11 / AD DS environment is still pending. `docs/index.html` is prepared for GitHub Pages. Select the `main` branch and `/docs` as the Pages source when publishing.
 

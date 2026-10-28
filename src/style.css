@@ -15,3 +15,12 @@
 @media(max-width:560px){.course-grid{grid-template-columns:1fr}.course-card{min-height:188px;padding:21px}.course-card h3{font-size:18px}.course-card p{font-size:13px}.course-meta{font-size:12px}.hero h1{font-size:31px}.console .terminal-top{flex-wrap:wrap;gap:8px}.terminal-actions{margin-left:auto}.terminal-actions button{white-space:nowrap}.run-button{white-space:nowrap;flex:none}}
 
 .check-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:15px}.check-actions #lesson-reset{font-size:12px}
+
+/* Explain input mistakes and unmet task conditions without relying on color. */
+.input-warning{margin:10px 0 0;border-left:2px solid #e3be7c;padding:5px 9px;color:#ffe1a9;font:11px/1.8 var(--font);overflow-wrap:anywhere}
+.completion-checklist{margin:16px 0;padding:13px 14px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px}
+.completion-checklist h3{font-size:12px;margin:0 0 9px}
+.condition-list{list-style:none;margin:0;padding:0;font-size:11px;line-height:1.75}
+.condition-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;padding:7px 0;border-top:1px solid #e5ebf3;overflow-wrap:anywhere}
+.condition-list li:first-child{border-top:0}
+.condition-status{font-weight:650;white-space:nowrap}.condition-status.met{color:#17614b}.condition-status.missing{color:#87521a}

@@ -419,3 +419,75 @@ test('netsh IPv4 context aliases match the formal command and do not accept arbi
     }
   }
 });
+
+test('WLAN interface abbreviation and IPv4 route filtering preserve scenario evidence', () => {
+  for (const scenario of ['base', 'wifi-off', 'vpn-route']) {
+    const s = session(scenario), before = JSON.stringify(s.net);
+    const interfaces = run(s, 'netsh', 'wlan', 'show', 'interfaces');
+    assert.deepEqual(run(s, 'netsh', 'wlan', 'show', 'interface'), interfaces);
+    assert.deepEqual(run(s, 'NETSH', 'WLAN', 'SHOW', 'INTERFACE'), interfaces);
+    const table = run(s, 'route', 'print');
+    assert.deepEqual(run(s, 'route', 'print', '-4'), table);
+    assert.deepEqual(run(s, 'route', '-4', 'PRINT'), table);
+    assert.equal(JSON.stringify(s.net), before, 'read-only alternatives preserve the network state');
+    for (const args of [['print', '-6'], ['print', '-4', '-4'], ['print', '10.*'], ['delete', '-4']]) {
+      const result = run(s, 'route', ...args);
+      assert.equal(result.unsupported, true);
+      assert.match(result.stderr, /route print \[-4\].*IPv4 only/);
+    }
+    const unsupportedWlan = run(s, 'netsh', 'wlan', 'show', 'inter');
+    assert.equal(unsupportedWlan.unsupported, true);
+    assert.match(unsupportedWlan.stderr, /netsh wlan show interfaces/);
+    assert.equal(JSON.stringify(s.net), before);
+  }
+});
+
+test('DHCP renewal accepts the modeled adapter name without changing manual DNS or VPN state', () => {
+  for (const scenario of ['base', 'dns-wrong', 'vpn-route']) {
+    const s = session(scenario), dns = s.net.adapter.dns, vpn = JSON.stringify(s.net.vpn);
+    const result = run(s, 'ipconfig', '/renew', 'Wi-Fi');
+    assert.equal(result.code, 0);
+    assert.match(result.stdout, /Wireless LAN adapter Wi-Fi/);
+    assert.doesNotMatch(result.stdout, /PPP adapter CORP-VPN/);
+    assert.equal(s.net.adapter.leaseRenewals, 1);
+    assert.equal(s.net.adapter.dns, dns);
+    assert.equal(JSON.stringify(s.net.vpn), vpn);
+    assert.equal(run(s, 'ipconfig', '/RENEW', 'wi-fi').code, 0);
+    assert.equal(s.net.adapter.leaseRenewals, 2);
+  }
+  const offline = session('wifi-off'), before = JSON.stringify(offline.net);
+  const result = run(offline, 'ipconfig', '/renew', 'Wi-Fi');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /media disconnected/);
+  assert.equal(JSON.stringify(offline.net), before);
+});
+
+test('unsupported adapter selections and extra arguments give the supported form without changing state', () => {
+  for (const args of [['/renew', 'Ethernet'], ['/renew', 'CORP-VPN'], ['/renew', '*'], ['/renew', 'Wi-Fi', '/all'], ['/flushdns', 'Wi-Fi'], ['/all', 'Wi-Fi']]) {
+    const s = session('dns-cache'), before = JSON.stringify(s.net);
+    const result = run(s, 'ipconfig', ...args);
+    assert.equal(result.unsupported, true, args.join(' '));
+    assert.match(result.stderr, /\/renew \[Wi-Fi\]/);
+    assert.equal(JSON.stringify(s.net), before);
+  }
+});
+
+test('disconnected DNS queries retain the configured address without claiming a resolved server name', () => {
+  const offline = session('wifi-off'), before = JSON.stringify(offline.net);
+  for (const args of [
+    ['intranet.corp.example'], ['intranet.corp.example', '10.20.0.10'],
+    ['intranet.corp.example', 'dc01.corp.example'], ['-type=SRV', '_ldap._tcp.dc._msdcs.corp.example']
+  ]) {
+    const result = run(offline, 'nslookup', ...args);
+    assert.equal(result.code, 1);
+    assert.match(result.stdout, /^Server:\s+UnKnown\nAddress:\s+10\.20\.0\.10\n/);
+    assert.match(result.stdout, /DNS request timed out/);
+    assert.match(result.stderr, /Request to UnKnown timed-out/);
+    assert.doesNotMatch(result.stdout + result.stderr, /Server:\s+dc01|Request to dc01|Name:\s+intranet/);
+  }
+  assert.equal(JSON.stringify(offline.net), before);
+  const connected = run(session(), 'nslookup', 'intranet.corp.example');
+  assert.equal(connected.code, 0);
+  assert.match(connected.stdout, /^Server:\s+dc01\.corp\.example/);
+  assert.match(connected.stdout, /Name:\s+intranet\.corp\.example\nAddress:\s+10\.20\.0\.20/);
+});
