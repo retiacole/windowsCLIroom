@@ -1,0 +1,1022 @@
+{
+  "schema": "windowsCLIroom.progress",
+  "version": 1,
+  "language": "en",
+  "activeId": "routing-table",
+  "completed": {
+    "help-first": {
+      "at": "2026-10-28T08:13:16.296Z",
+      "hints": 0,
+      "solutionUsed": false
+    },
+    "routing-table": {
+      "at": "2026-10-28T08:13:20.167Z",
+      "hints": 0,
+      "solutionUsed": false
+    },
+    "refresh-group-policy": {
+      "at": "2026-10-28T08:13:23.351Z",
+      "hints": 0,
+      "solutionUsed": false
+    },
+    "capstone-stale-portal": {
+      "at": "2026-10-28T08:13:23.966Z",
+      "hints": 0,
+      "solutionUsed": false
+    }
+  },
+  "checkpoints": {
+    "help-first": {
+      "session": {
+        "version": 1,
+        "cwd": "C:\\Users\\student",
+        "scenario": "base",
+        "files": {
+          "c:\\": {
+            "path": "C:\\",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\": {
+            "path": "D:\\",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users": {
+            "path": "C:\\Users",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student": {
+            "path": "C:\\Users\\student",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\documents": {
+            "path": "C:\\Users\\student\\Documents",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\desktop": {
+            "path": "C:\\Users\\student\\Desktop",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata": {
+            "path": "C:\\Users\\student\\AppData",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local": {
+            "path": "C:\\Users\\student\\AppData\\Local",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local\\temp": {
+            "path": "C:\\Users\\student\\AppData\\Local\\Temp",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab": {
+            "path": "C:\\Lab",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\logs": {
+            "path": "C:\\Lab\\Logs",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\reports": {
+            "path": "C:\\Lab\\Reports",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\shared files": {
+            "path": "C:\\Lab\\Shared Files",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\support": {
+            "path": "D:\\Support",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\readme.txt": {
+            "path": "C:\\Lab\\readme.txt",
+            "dir": false,
+            "content": "PC-014 support notes\nContact: helpdesk\n"
+          },
+          "c:\\lab\\logs\\app.log": {
+            "path": "C:\\Lab\\Logs\\app.log",
+            "dir": false,
+            "content": "09:00 INFO Application started\n09:03 ERROR Printer service unavailable\n09:05 INFO Retry scheduled\n09:08 ERROR Print job failed\n"
+          },
+          "c:\\lab\\shared files\\guide.txt": {
+            "path": "C:\\Lab\\Shared Files\\guide.txt",
+            "dir": false,
+            "content": "Team support guide\nCheck the configuration before changing it.\n"
+          },
+          "c:\\lab\\devices.csv": {
+            "path": "C:\\Lab\\devices.csv",
+            "dir": false,
+            "content": "Name,Department,FreeGB\nPC-014,Sales,8\nPC-021,Support,42\nPC-032,Sales,5\n"
+          },
+          "d:\\support\\ticket.txt": {
+            "path": "D:\\Support\\ticket.txt",
+            "dir": false,
+            "content": "Ticket 1042\nShared folder cannot be opened.\n"
+          }
+        },
+        "env": {
+          "USERNAME": "student",
+          "USERDOMAIN": "CORP",
+          "COMPUTERNAME": "PC-014",
+          "USERPROFILE": "C:\\Users\\student",
+          "HOMEDRIVE": "C:",
+          "HOMEPATH": "\\Users\\student",
+          "SYSTEMROOT": "C:\\Windows",
+          "WINDIR": "C:\\Windows",
+          "TEMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "TMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "PATH": "C:\\Windows\\System32;C:\\Windows",
+          "COMSPEC": "C:\\Windows\\System32\\cmd.exe",
+          "PATHEXT": ".COM;.EXE;.BAT;.CMD"
+        },
+        "machine": {
+          "hostname": "PC-014",
+          "domain": "CORP",
+          "username": "student"
+        },
+        "pc": {
+          "driveCwds": {
+            "C": "C:\\Users\\student",
+            "D": "D:\\"
+          },
+          "spoolerRunning": true,
+          "appRunning": true,
+          "systemCorrupt": false,
+          "imageCorrupt": false
+        },
+        "net": {
+          "version": 1,
+          "scenario": "base",
+          "adapter": {
+            "name": "Wi-Fi",
+            "connected": true,
+            "ssid": "CORP-Staff",
+            "mac": "02-20-00-00-00-14",
+            "ip": "10.20.0.14",
+            "mask": "255.255.255.0",
+            "gateway": "10.20.0.1",
+            "dhcp": true,
+            "dns": "10.20.0.10",
+            "dnsAutomatic": true,
+            "leaseRenewals": 0
+          },
+          "vpn": {
+            "connected": false,
+            "ip": "10.99.0.14",
+            "corporateRoute": true
+          },
+          "cache": [],
+          "winhttp": {
+            "proxy": "",
+            "bypass": ""
+          },
+          "domain": {
+            "name": "corp.example",
+            "controller": "dc01.corp.example",
+            "policyCurrent": true,
+            "refreshes": 0,
+            "timeSource": "dc01.corp.example"
+          },
+          "http": {
+            "intranetStatus": 200
+          },
+          "firewall": {
+            "domain": "ON",
+            "private": "ON",
+            "public": "ON",
+            "current": "Domain"
+          }
+        },
+        "history": [
+          {
+            "line": "help",
+            "stdout": "windowsCLIroom — supported Windows CMD subset\n\nhelp        List supported commands or their syntax\ncls         Clear the terminal display\necho        Print text; use > or >> to save it\ncd          Show or change the working directory\ndir         List files and directories\ntype        Display text file contents\nmore        Display text (without interactive pagination in this simulator)\nfindstr     Filter matching lines; this simulator supports literal search only\nfind        Find text and optionally count matching lines\nmkdir       Create directories\ncopy        Copy one file; /y permits overwrite\nmove        Move one file; /y permits overwrite\nren         Rename one file in the same directory\nset         Display known environment variables (assignment is unsupported)\nwhere       Locate simulated Windows executables\nver         Show the simulated Windows version\nsysteminfo  Show OS, memory, domain, and computer information\nhostname    Show the computer name\nwhoami      Show the current identity and group membership\ntasklist    List processes and filter by PID or image name\ntaskkill    End the simulated exercise application\nsc          Inspect service status or configuration\nnet         Inspect services and network connections\nwevtutil    Read simulated System events\nicacls      Display access permissions (no modification)\nattrib      Display file attributes (no modification)\nfsutil      Show simulated disk space\nsfc         Simulate system file verification or repair\ndism        Simulate Windows image checks or repair\nipconfig    Inspect IP/DNS settings and the resolver cache.\nping        Check ICMP replies; success does not prove application health.\nnslookup    Query the DNS server independently of the local resolver cache.\ntracert     Inspect responding hops; a silent hop alone does not identify a fault.\nroute       Display the routing table.\narp         Display cached local-neighbor IP/MAC mappings.\npathping    Inspect route and ICMP response statistics.\nnetstat     Display local connections, listeners and PIDs; this is not a remote port test.\nnetsh       Inspect WLAN, IPv4, WinHTTP and firewall configuration.\nnet use     List existing shared-folder connections.\ngpresult    Inspect the last applied Group Policy results.\nnltest      Locate the domain controller.\nw32tm       Inspect time synchronization and source; this does not prove zero clock offset.\ngpupdate    Refresh Group Policy.\ncurl        Inspect HTTP responses: -I sends HEAD; -i includes headers with GET.\n\nUse help command for syntax. Double quotes group paths; | pipes text; > overwrites and >> appends.\nOnly the listed subset is simulated; no command affects your real computer.\n",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "help",
+                "args": [],
+                "command": "help",
+                "input": "",
+                "output": "windowsCLIroom — supported Windows CMD subset\n\nhelp        List supported commands or their syntax\ncls         Clear the terminal display\necho        Print text; use > or >> to save it\ncd          Show or change the working directory\ndir         List files and directories\ntype        Display text file contents\nmore        Display text (without interactive pagination in this simulator)\nfindstr     Filter matching lines; this simulator supports literal search only\nfind        Find text and optionally count matching lines\nmkdir       Create directories\ncopy        Copy one file; /y permits overwrite\nmove        Move one file; /y permits overwrite\nren         Rename one file in the same directory\nset         Display known environment variables (assignment is unsupported)\nwhere       Locate simulated Windows executables\nver         Show the simulated Windows version\nsysteminfo  Show OS, memory, domain, and computer information\nhostname    Show the computer name\nwhoami      Show the current identity and group membership\ntasklist    List processes and filter by PID or image name\ntaskkill    End the simulated exercise application\nsc          Inspect service status or configuration\nnet         Inspect services and network connections\nwevtutil    Read simulated System events\nicacls      Display access permissions (no modification)\nattrib      Display file attributes (no modification)\nfsutil      Show simulated disk space\nsfc         Simulate system file verification or repair\ndism        Simulate Windows image checks or repair\nipconfig    Inspect IP/DNS settings and the resolver cache.\nping        Check ICMP replies; success does not prove application health.\nnslookup    Query the DNS server independently of the local resolver cache.\ntracert     Inspect responding hops; a silent hop alone does not identify a fault.\nroute       Display the routing table.\narp         Display cached local-neighbor IP/MAC mappings.\npathping    Inspect route and ICMP response statistics.\nnetstat     Display local connections, listeners and PIDs; this is not a remote port test.\nnetsh       Inspect WLAN, IPv4, WinHTTP and firewall configuration.\nnet use     List existing shared-folder connections.\ngpresult    Inspect the last applied Group Policy results.\nnltest      Locate the domain controller.\nw32tm       Inspect time synchronization and source; this does not prove zero clock offset.\ngpupdate    Refresh Group Policy.\ncurl        Inspect HTTP responses: -I sends HEAD; -i includes headers with GET.\n\nUse help command for syntax. Double quotes group paths; | pipes text; > overwrites and >> appends.\nOnly the listed subset is simulated; no command affects your real computer.\n",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          },
+          {
+            "line": "help dir",
+            "stdout": "dir [path] [/a] [/b] [/s]\n\nList files and directories\nフォルダーの内容を表示\n\n[Simulator] Only this documented subset is implemented.\n",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "help",
+                "args": [
+                  "dir"
+                ],
+                "command": "help dir",
+                "input": "",
+                "output": "dir [path] [/a] [/b] [/s]\n\nList files and directories\nフォルダーの内容を表示\n\n[Simulator] Only this documented subset is implemented.\n",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          }
+        ]
+      },
+      "input": "",
+      "answer": "",
+      "hintLevel": 0,
+      "solutionShown": false
+    },
+    "routing-table": {
+      "session": {
+        "version": 1,
+        "cwd": "C:\\Users\\student",
+        "scenario": "vpn-route",
+        "files": {
+          "c:\\": {
+            "path": "C:\\",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\": {
+            "path": "D:\\",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users": {
+            "path": "C:\\Users",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student": {
+            "path": "C:\\Users\\student",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\documents": {
+            "path": "C:\\Users\\student\\Documents",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\desktop": {
+            "path": "C:\\Users\\student\\Desktop",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata": {
+            "path": "C:\\Users\\student\\AppData",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local": {
+            "path": "C:\\Users\\student\\AppData\\Local",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local\\temp": {
+            "path": "C:\\Users\\student\\AppData\\Local\\Temp",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab": {
+            "path": "C:\\Lab",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\logs": {
+            "path": "C:\\Lab\\Logs",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\reports": {
+            "path": "C:\\Lab\\Reports",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\shared files": {
+            "path": "C:\\Lab\\Shared Files",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\support": {
+            "path": "D:\\Support",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\readme.txt": {
+            "path": "C:\\Lab\\readme.txt",
+            "dir": false,
+            "content": "PC-014 support notes\nContact: helpdesk\n"
+          },
+          "c:\\lab\\logs\\app.log": {
+            "path": "C:\\Lab\\Logs\\app.log",
+            "dir": false,
+            "content": "09:00 INFO Application started\n09:03 ERROR Printer service unavailable\n09:05 INFO Retry scheduled\n09:08 ERROR Print job failed\n"
+          },
+          "c:\\lab\\shared files\\guide.txt": {
+            "path": "C:\\Lab\\Shared Files\\guide.txt",
+            "dir": false,
+            "content": "Team support guide\nCheck the configuration before changing it.\n"
+          },
+          "c:\\lab\\devices.csv": {
+            "path": "C:\\Lab\\devices.csv",
+            "dir": false,
+            "content": "Name,Department,FreeGB\nPC-014,Sales,8\nPC-021,Support,42\nPC-032,Sales,5\n"
+          },
+          "d:\\support\\ticket.txt": {
+            "path": "D:\\Support\\ticket.txt",
+            "dir": false,
+            "content": "Ticket 1042\nShared folder cannot be opened.\n"
+          }
+        },
+        "env": {
+          "USERNAME": "student",
+          "USERDOMAIN": "CORP",
+          "COMPUTERNAME": "PC-014",
+          "USERPROFILE": "C:\\Users\\student",
+          "HOMEDRIVE": "C:",
+          "HOMEPATH": "\\Users\\student",
+          "SYSTEMROOT": "C:\\Windows",
+          "WINDIR": "C:\\Windows",
+          "TEMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "TMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "PATH": "C:\\Windows\\System32;C:\\Windows",
+          "COMSPEC": "C:\\Windows\\System32\\cmd.exe",
+          "PATHEXT": ".COM;.EXE;.BAT;.CMD"
+        },
+        "machine": {
+          "hostname": "PC-014",
+          "domain": "CORP",
+          "username": "student"
+        },
+        "pc": {
+          "driveCwds": {
+            "C": "C:\\Users\\student",
+            "D": "D:\\"
+          },
+          "spoolerRunning": true,
+          "appRunning": true,
+          "systemCorrupt": false,
+          "imageCorrupt": false
+        },
+        "net": {
+          "version": 1,
+          "scenario": "vpn-route",
+          "adapter": {
+            "name": "Wi-Fi",
+            "connected": true,
+            "ssid": "CORP-Staff",
+            "mac": "02-20-00-00-00-14",
+            "ip": "192.168.50.14",
+            "mask": "255.255.255.0",
+            "gateway": "192.168.50.1",
+            "dhcp": true,
+            "dns": "10.20.0.10",
+            "dnsAutomatic": true,
+            "leaseRenewals": 0
+          },
+          "vpn": {
+            "connected": true,
+            "ip": "10.99.0.14",
+            "corporateRoute": false
+          },
+          "cache": [],
+          "winhttp": {
+            "proxy": "",
+            "bypass": ""
+          },
+          "domain": {
+            "name": "corp.example",
+            "controller": "dc01.corp.example",
+            "policyCurrent": true,
+            "refreshes": 0,
+            "timeSource": "dc01.corp.example"
+          },
+          "http": {
+            "intranetStatus": 200
+          },
+          "firewall": {
+            "domain": "ON",
+            "private": "ON",
+            "public": "ON",
+            "current": "Public"
+          }
+        },
+        "history": [
+          {
+            "line": "ipconfig /all",
+            "stdout": "Windows IP Configuration\n\n   Host Name . . . . . . . . . . . . : PC-014\n   Primary Dns Suffix  . . . . . . . : corp.example\n   Node Type . . . . . . . . . . . . : Hybrid\n\nWireless LAN adapter Wi-Fi:\n\n   Connection-specific DNS Suffix  . : corp.example\n   Description . . . . . . . . . . . : Virtual Wi-Fi Adapter\n   Physical Address. . . . . . . . . : 02-20-00-00-00-14\n   DHCP Enabled. . . . . . . . . . . : Yes\n   IPv4 Address. . . . . . . . . . . : 192.168.50.14\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.50.1\n   DHCP Server . . . . . . . . . . . : 192.168.50.1\n   DNS Servers . . . . . . . . . . . : 10.20.0.10\n   NetBIOS over Tcpip. . . . . . . . : Enabled\n\nPPP adapter CORP-VPN:\n\n   IPv4 Address. . . . . . . . . . . : 10.99.0.14\n   Subnet Mask . . . . . . . . . . . : 255.255.255.255\n   Default Gateway . . . . . . . . . :",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "ipconfig",
+                "args": [
+                  "/all"
+                ],
+                "command": "ipconfig /all",
+                "input": "",
+                "output": "Windows IP Configuration\n\n   Host Name . . . . . . . . . . . . : PC-014\n   Primary Dns Suffix  . . . . . . . : corp.example\n   Node Type . . . . . . . . . . . . : Hybrid\n\nWireless LAN adapter Wi-Fi:\n\n   Connection-specific DNS Suffix  . : corp.example\n   Description . . . . . . . . . . . : Virtual Wi-Fi Adapter\n   Physical Address. . . . . . . . . : 02-20-00-00-00-14\n   DHCP Enabled. . . . . . . . . . . : Yes\n   IPv4 Address. . . . . . . . . . . : 192.168.50.14\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.50.1\n   DHCP Server . . . . . . . . . . . : 192.168.50.1\n   DNS Servers . . . . . . . . . . . : 10.20.0.10\n   NetBIOS over Tcpip. . . . . . . . : Enabled\n\nPPP adapter CORP-VPN:\n\n   IPv4 Address. . . . . . . . . . . : 10.99.0.14\n   Subnet Mask . . . . . . . . . . . : 255.255.255.255\n   Default Gateway . . . . . . . . . :",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          },
+          {
+            "line": "route print",
+            "stdout": "Interface List\n 12...02 20 00 00 00 14 ......Virtual Wi-Fi Adapter\n 24...........................CORP-VPN\n  1...........................Software Loopback Interface 1\n\nIPv4 Route Table\nActive Routes:\nNetwork Destination        Netmask          Gateway       Interface  Metric\n          0.0.0.0          0.0.0.0     192.168.50.1    192.168.50.14     25\n     192.168.50.0    255.255.255.0         On-link    192.168.50.14    281\n       10.20.0.10  255.255.255.255         On-link     10.99.0.14      5\n       10.99.0.14  255.255.255.255         On-link     10.99.0.14    261\n        127.0.0.0        255.0.0.0         On-link       127.0.0.1    331\n\nPersistent Routes:\n  None",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "route",
+                "args": [
+                  "print"
+                ],
+                "command": "route print",
+                "input": "",
+                "output": "Interface List\n 12...02 20 00 00 00 14 ......Virtual Wi-Fi Adapter\n 24...........................CORP-VPN\n  1...........................Software Loopback Interface 1\n\nIPv4 Route Table\nActive Routes:\nNetwork Destination        Netmask          Gateway       Interface  Metric\n          0.0.0.0          0.0.0.0     192.168.50.1    192.168.50.14     25\n     192.168.50.0    255.255.255.0         On-link    192.168.50.14    281\n       10.20.0.10  255.255.255.255         On-link     10.99.0.14      5\n       10.99.0.14  255.255.255.255         On-link     10.99.0.14    261\n        127.0.0.0        255.0.0.0         On-link       127.0.0.1    331\n\nPersistent Routes:\n  None",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          }
+        ]
+      },
+      "input": "",
+      "answer": "b",
+      "hintLevel": 0,
+      "solutionShown": false
+    },
+    "refresh-group-policy": {
+      "session": {
+        "version": 1,
+        "cwd": "C:\\Users\\student",
+        "scenario": "ad-policy",
+        "files": {
+          "c:\\": {
+            "path": "C:\\",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\": {
+            "path": "D:\\",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users": {
+            "path": "C:\\Users",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student": {
+            "path": "C:\\Users\\student",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\documents": {
+            "path": "C:\\Users\\student\\Documents",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\desktop": {
+            "path": "C:\\Users\\student\\Desktop",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata": {
+            "path": "C:\\Users\\student\\AppData",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local": {
+            "path": "C:\\Users\\student\\AppData\\Local",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local\\temp": {
+            "path": "C:\\Users\\student\\AppData\\Local\\Temp",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab": {
+            "path": "C:\\Lab",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\logs": {
+            "path": "C:\\Lab\\Logs",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\reports": {
+            "path": "C:\\Lab\\Reports",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\shared files": {
+            "path": "C:\\Lab\\Shared Files",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\support": {
+            "path": "D:\\Support",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\readme.txt": {
+            "path": "C:\\Lab\\readme.txt",
+            "dir": false,
+            "content": "PC-014 support notes\nContact: helpdesk\n"
+          },
+          "c:\\lab\\logs\\app.log": {
+            "path": "C:\\Lab\\Logs\\app.log",
+            "dir": false,
+            "content": "09:00 INFO Application started\n09:03 ERROR Printer service unavailable\n09:05 INFO Retry scheduled\n09:08 ERROR Print job failed\n"
+          },
+          "c:\\lab\\shared files\\guide.txt": {
+            "path": "C:\\Lab\\Shared Files\\guide.txt",
+            "dir": false,
+            "content": "Team support guide\nCheck the configuration before changing it.\n"
+          },
+          "c:\\lab\\devices.csv": {
+            "path": "C:\\Lab\\devices.csv",
+            "dir": false,
+            "content": "Name,Department,FreeGB\nPC-014,Sales,8\nPC-021,Support,42\nPC-032,Sales,5\n"
+          },
+          "d:\\support\\ticket.txt": {
+            "path": "D:\\Support\\ticket.txt",
+            "dir": false,
+            "content": "Ticket 1042\nShared folder cannot be opened.\n"
+          }
+        },
+        "env": {
+          "USERNAME": "student",
+          "USERDOMAIN": "CORP",
+          "COMPUTERNAME": "PC-014",
+          "USERPROFILE": "C:\\Users\\student",
+          "HOMEDRIVE": "C:",
+          "HOMEPATH": "\\Users\\student",
+          "SYSTEMROOT": "C:\\Windows",
+          "WINDIR": "C:\\Windows",
+          "TEMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "TMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "PATH": "C:\\Windows\\System32;C:\\Windows",
+          "COMSPEC": "C:\\Windows\\System32\\cmd.exe",
+          "PATHEXT": ".COM;.EXE;.BAT;.CMD"
+        },
+        "machine": {
+          "hostname": "PC-014",
+          "domain": "CORP",
+          "username": "student"
+        },
+        "pc": {
+          "driveCwds": {
+            "C": "C:\\Users\\student",
+            "D": "D:\\"
+          },
+          "spoolerRunning": true,
+          "appRunning": true,
+          "systemCorrupt": false,
+          "imageCorrupt": false
+        },
+        "net": {
+          "version": 1,
+          "scenario": "ad-policy",
+          "adapter": {
+            "name": "Wi-Fi",
+            "connected": true,
+            "ssid": "CORP-Staff",
+            "mac": "02-20-00-00-00-14",
+            "ip": "10.20.0.14",
+            "mask": "255.255.255.0",
+            "gateway": "10.20.0.1",
+            "dhcp": true,
+            "dns": "10.20.0.10",
+            "dnsAutomatic": true,
+            "leaseRenewals": 0
+          },
+          "vpn": {
+            "connected": false,
+            "ip": "10.99.0.14",
+            "corporateRoute": true
+          },
+          "cache": [],
+          "winhttp": {
+            "proxy": "",
+            "bypass": ""
+          },
+          "domain": {
+            "name": "corp.example",
+            "controller": "dc01.corp.example",
+            "policyCurrent": true,
+            "refreshes": 1,
+            "timeSource": "dc01.corp.example"
+          },
+          "http": {
+            "intranetStatus": 200
+          },
+          "firewall": {
+            "domain": "ON",
+            "private": "ON",
+            "public": "ON",
+            "current": "Domain"
+          }
+        },
+        "history": [
+          {
+            "line": "gpresult /r",
+            "stdout": "Microsoft (R) Windows (R) Operating System Group Policy Result tool\n\nRSOP data for CORP\\student on PC-014 : Logging Mode\n\nOS Configuration:            Member Workstation\nDomain Name:                 CORP\nDomain Type:                 Windows 2008 or later\n\nCOMPUTER SETTINGS\n------------------\n    CN=PC-014,OU=Workstations,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        Default Domain Policy\n        CORP-Workstation-Baseline\n\nUSER SETTINGS\n-------------\n    CN=student,OU=Sales,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        CORP-Desktop\n\n    Simulator scenario note:\n        CORP-Drive-Map (Pending refresh)",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "gpresult",
+                "args": [
+                  "/r"
+                ],
+                "command": "gpresult /r",
+                "input": "",
+                "output": "Microsoft (R) Windows (R) Operating System Group Policy Result tool\n\nRSOP data for CORP\\student on PC-014 : Logging Mode\n\nOS Configuration:            Member Workstation\nDomain Name:                 CORP\nDomain Type:                 Windows 2008 or later\n\nCOMPUTER SETTINGS\n------------------\n    CN=PC-014,OU=Workstations,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        Default Domain Policy\n        CORP-Workstation-Baseline\n\nUSER SETTINGS\n-------------\n    CN=student,OU=Sales,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        CORP-Desktop\n\n    Simulator scenario note:\n        CORP-Drive-Map (Pending refresh)",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          },
+          {
+            "line": "gpupdate /force",
+            "stdout": "Updating policy...\n\nComputer Policy update has completed successfully.\nUser Policy update has completed successfully.",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "gpupdate",
+                "args": [
+                  "/force"
+                ],
+                "command": "gpupdate /force",
+                "input": "",
+                "output": "Updating policy...\n\nComputer Policy update has completed successfully.\nUser Policy update has completed successfully.",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": [
+              "Group Policy refreshed; Z: drive mapping applied in the training model"
+            ]
+          },
+          {
+            "line": "gpresult /r",
+            "stdout": "Microsoft (R) Windows (R) Operating System Group Policy Result tool\n\nRSOP data for CORP\\student on PC-014 : Logging Mode\n\nOS Configuration:            Member Workstation\nDomain Name:                 CORP\nDomain Type:                 Windows 2008 or later\n\nCOMPUTER SETTINGS\n------------------\n    CN=PC-014,OU=Workstations,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        Default Domain Policy\n        CORP-Workstation-Baseline\n\nUSER SETTINGS\n-------------\n    CN=student,OU=Sales,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        CORP-Desktop\n        CORP-Drive-Map",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "gpresult",
+                "args": [
+                  "/r"
+                ],
+                "command": "gpresult /r",
+                "input": "",
+                "output": "Microsoft (R) Windows (R) Operating System Group Policy Result tool\n\nRSOP data for CORP\\student on PC-014 : Logging Mode\n\nOS Configuration:            Member Workstation\nDomain Name:                 CORP\nDomain Type:                 Windows 2008 or later\n\nCOMPUTER SETTINGS\n------------------\n    CN=PC-014,OU=Workstations,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        Default Domain Policy\n        CORP-Workstation-Baseline\n\nUSER SETTINGS\n-------------\n    CN=student,OU=Sales,DC=corp,DC=example\n    Group Policy was applied from:      dc01.corp.example\n    Applied Group Policy Objects\n    -----------------------------\n        CORP-Desktop\n        CORP-Drive-Map",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          },
+          {
+            "line": "net use",
+            "stdout": "New connections will be remembered.\n\nStatus       Local     Remote                    Network\n-------------------------------------------------------------------------------\nOK           Z:        \\\\files.corp.example\\Team Microsoft Windows Network\nThe command completed successfully.",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "net",
+                "args": [
+                  "use"
+                ],
+                "command": "net use",
+                "input": "",
+                "output": "New connections will be remembered.\n\nStatus       Local     Remote                    Network\n-------------------------------------------------------------------------------\nOK           Z:        \\\\files.corp.example\\Team Microsoft Windows Network\nThe command completed successfully.",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": []
+          }
+        ]
+      },
+      "input": "",
+      "answer": "c",
+      "hintLevel": 0,
+      "solutionShown": false
+    },
+    "capstone-stale-portal": {
+      "session": {
+        "version": 1,
+        "cwd": "C:\\Users\\student",
+        "scenario": "dns-cache",
+        "files": {
+          "c:\\": {
+            "path": "C:\\",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\": {
+            "path": "D:\\",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users": {
+            "path": "C:\\Users",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student": {
+            "path": "C:\\Users\\student",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\documents": {
+            "path": "C:\\Users\\student\\Documents",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\desktop": {
+            "path": "C:\\Users\\student\\Desktop",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata": {
+            "path": "C:\\Users\\student\\AppData",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local": {
+            "path": "C:\\Users\\student\\AppData\\Local",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\users\\student\\appdata\\local\\temp": {
+            "path": "C:\\Users\\student\\AppData\\Local\\Temp",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab": {
+            "path": "C:\\Lab",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\logs": {
+            "path": "C:\\Lab\\Logs",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\reports": {
+            "path": "C:\\Lab\\Reports",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\shared files": {
+            "path": "C:\\Lab\\Shared Files",
+            "dir": true,
+            "content": ""
+          },
+          "d:\\support": {
+            "path": "D:\\Support",
+            "dir": true,
+            "content": ""
+          },
+          "c:\\lab\\readme.txt": {
+            "path": "C:\\Lab\\readme.txt",
+            "dir": false,
+            "content": "PC-014 support notes\nContact: helpdesk\n"
+          },
+          "c:\\lab\\logs\\app.log": {
+            "path": "C:\\Lab\\Logs\\app.log",
+            "dir": false,
+            "content": "09:00 INFO Application started\n09:03 ERROR Printer service unavailable\n09:05 INFO Retry scheduled\n09:08 ERROR Print job failed\n"
+          },
+          "c:\\lab\\shared files\\guide.txt": {
+            "path": "C:\\Lab\\Shared Files\\guide.txt",
+            "dir": false,
+            "content": "Team support guide\nCheck the configuration before changing it.\n"
+          },
+          "c:\\lab\\devices.csv": {
+            "path": "C:\\Lab\\devices.csv",
+            "dir": false,
+            "content": "Name,Department,FreeGB\nPC-014,Sales,8\nPC-021,Support,42\nPC-032,Sales,5\n"
+          },
+          "d:\\support\\ticket.txt": {
+            "path": "D:\\Support\\ticket.txt",
+            "dir": false,
+            "content": "Ticket 1042\nShared folder cannot be opened.\n"
+          },
+          "c:\\lab\\reports\\portal.txt": {
+            "path": "C:\\Lab\\Reports\\portal.txt",
+            "dir": false,
+            "content": "Windows IP Configuration\n\n    intranet.corp.example\n    ----------------------------------------\n    Record Name . . . . . : intranet.corp.example\n    Record Type . . . . . : 1\n    Time To Live  . . . . : 300\n    Data Length . . . . . : 4\n    Section . . . . . . . : Answer\n    A (Host) Record . . . : 10.20.0.99Server:  dc01.corp.example\nAddress:  10.20.0.10\n\nName:    intranet.corp.example\nAddress:  10.20.0.20HTTP/1.1 200 OK\nContent-Type: text/plain; charset=utf-8\nContent-Length: 46\nServer: LabWeb/1.0\nConnection: close\n"
+          }
+        },
+        "env": {
+          "USERNAME": "student",
+          "USERDOMAIN": "CORP",
+          "COMPUTERNAME": "PC-014",
+          "USERPROFILE": "C:\\Users\\student",
+          "HOMEDRIVE": "C:",
+          "HOMEPATH": "\\Users\\student",
+          "SYSTEMROOT": "C:\\Windows",
+          "WINDIR": "C:\\Windows",
+          "TEMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "TMP": "C:\\Users\\student\\AppData\\Local\\Temp",
+          "PATH": "C:\\Windows\\System32;C:\\Windows",
+          "COMSPEC": "C:\\Windows\\System32\\cmd.exe",
+          "PATHEXT": ".COM;.EXE;.BAT;.CMD"
+        },
+        "machine": {
+          "hostname": "PC-014",
+          "domain": "CORP",
+          "username": "student"
+        },
+        "pc": {
+          "driveCwds": {
+            "C": "C:\\Users\\student",
+            "D": "D:\\"
+          },
+          "spoolerRunning": true,
+          "appRunning": true,
+          "systemCorrupt": false,
+          "imageCorrupt": false
+        },
+        "net": {
+          "version": 1,
+          "scenario": "dns-cache",
+          "adapter": {
+            "name": "Wi-Fi",
+            "connected": true,
+            "ssid": "CORP-Staff",
+            "mac": "02-20-00-00-00-14",
+            "ip": "10.20.0.14",
+            "mask": "255.255.255.0",
+            "gateway": "10.20.0.1",
+            "dhcp": true,
+            "dns": "10.20.0.10",
+            "dnsAutomatic": true,
+            "leaseRenewals": 0
+          },
+          "vpn": {
+            "connected": false,
+            "ip": "10.99.0.14",
+            "corporateRoute": true
+          },
+          "cache": [
+            {
+              "name": "intranet.corp.example",
+              "address": "10.20.0.20",
+              "ttl": 300
+            }
+          ],
+          "winhttp": {
+            "proxy": "",
+            "bypass": ""
+          },
+          "domain": {
+            "name": "corp.example",
+            "controller": "dc01.corp.example",
+            "policyCurrent": true,
+            "refreshes": 0,
+            "timeSource": "dc01.corp.example"
+          },
+          "http": {
+            "intranetStatus": 200
+          },
+          "firewall": {
+            "domain": "ON",
+            "private": "ON",
+            "public": "ON",
+            "current": "Domain"
+          }
+        },
+        "history": [
+          {
+            "line": "ipconfig /displaydns > C:\\Lab\\Reports\\portal.txt",
+            "stdout": "",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "ipconfig",
+                "args": [
+                  "/displaydns"
+                ],
+                "command": "ipconfig /displaydns",
+                "input": "",
+                "output": "Windows IP Configuration\n\n    intranet.corp.example\n    ----------------------------------------\n    Record Name . . . . . : intranet.corp.example\n    Record Type . . . . . : 1\n    Time To Live  . . . . : 300\n    Data Length . . . . . : 4\n    Section . . . . . . . : Answer\n    A (Host) Record . . . : 10.20.0.99",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": [
+              "write:C:\\Lab\\Reports\\portal.txt"
+            ]
+          },
+          {
+            "line": "nslookup intranet.corp.example >> C:\\Lab\\Reports\\portal.txt",
+            "stdout": "",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "nslookup",
+                "args": [
+                  "intranet.corp.example"
+                ],
+                "command": "nslookup intranet.corp.example",
+                "input": "",
+                "output": "Server:  dc01.corp.example\nAddress:  10.20.0.10\n\nName:    intranet.corp.example\nAddress:  10.20.0.20",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": [
+              "append:C:\\Lab\\Reports\\portal.txt"
+            ]
+          },
+          {
+            "line": "ipconfig /flushdns",
+            "stdout": "Windows IP Configuration\n\nSuccessfully flushed the DNS Resolver Cache.",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "ipconfig",
+                "args": [
+                  "/flushdns"
+                ],
+                "command": "ipconfig /flushdns",
+                "input": "",
+                "output": "Windows IP Configuration\n\nSuccessfully flushed the DNS Resolver Cache.",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": [
+              "DNS resolver cache cleared"
+            ]
+          },
+          {
+            "line": "curl.exe -I https://intranet.corp.example >> C:\\Lab\\Reports\\portal.txt",
+            "stdout": "",
+            "stderr": "",
+            "code": 0,
+            "trace": [
+              {
+                "name": "curl",
+                "args": [
+                  "-I",
+                  "https://intranet.corp.example"
+                ],
+                "command": "curl.exe -I https://intranet.corp.example",
+                "input": "",
+                "output": "HTTP/1.1 200 OK\nContent-Type: text/plain; charset=utf-8\nContent-Length: 46\nServer: LabWeb/1.0\nConnection: close\n",
+                "error": "",
+                "code": 0
+              }
+            ],
+            "effects": [
+              "append:C:\\Lab\\Reports\\portal.txt"
+            ]
+          }
+        ]
+      },
+      "input": "",
+      "answer": "a",
+      "hintLevel": 0,
+      "solutionShown": false
+    }
+  }
+}

@@ -1,0 +1,10 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const root = __dirname;
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const scripts = ['network', 'shell', 'data', 'engine', 'app'].map(name => `/* ${name}.js */\n${read(`src/${name}.js`)}`).join('\n;\n').replace(/<\/script/gi, '<\\/script');
+const html = read('src/ui.html').replace('/*__STYLES__*/', () => read('src/style.css')).replace('/*__SCRIPTS__*/', () => scripts);
+fs.mkdirSync(path.join(root, 'docs'), { recursive: true });
+for (const target of ['windowsCLIroom.html', 'docs/index.html', 'docs/windowsCLIroom.html']) fs.writeFileSync(path.join(root, target), html);
+console.log(`Built windowsCLIroom v${JSON.parse(read('package.json')).version}: ${(Buffer.byteLength(html) / 1024).toFixed(0)} KiB, offline single HTML.`);
