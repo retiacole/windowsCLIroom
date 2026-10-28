@@ -59,6 +59,39 @@ fs.mkdirSync(output, {recursive:true});
     assert.equal(completed, Data.lessons.length);
     console.log(`Browser solutions: ${completed}/${Data.lessons.length} completed with correct interpretation.`);
 
+    // Japanese keyboards can enter actual yen characters rather than U+005C.
+    // Exercise the form, grading, completion and persistence in a clean profile.
+    const pathContext = await browser.newContext(), pathPage = await pathContext.newPage();
+    const pathErrors = [];
+    pathPage.on('pageerror', error => pathErrors.push(error.message));
+    pathPage.on('dialog', dialog => dialog.accept());
+    const pathInput = () => pathPage.locator('#command-input');
+    const pathRun = async command => { await pathInput().fill(command); await pathInput().press('Enter'); };
+    await pathPage.goto(url);
+    await pathPage.locator('.hero-actions [data-open]').click();
+    for (const separator of ['\\', '/', '\u00a5', '\uffe5']) {
+      await pathPage.locator('.lesson-item[data-open="current-directory"]').click();
+      await pathPage.locator('[data-action="reset"]').click();
+      await pathRun('cd'); await pathRun(`cd /d c:${separator}Lab`);
+      assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L02 separator ${separator}`);
+      assert.ok((await pathPage.locator('#prompt-path').textContent()).includes('C:\\Lab'));
+      await pathInput().fill(`type C:${separator}Lab${separator}read`);
+      await pathInput().press('Tab');
+      assert.equal(await pathInput().inputValue(), 'type C:\\Lab\\readme.txt');
+      await pathPage.locator('.lesson-item[data-open="quoted-path"]').click();
+      await pathPage.locator('[data-action="reset"]').click();
+      await pathRun(`type "C:${separator}Lab${separator}Shared Files${separator}guide.txt"`);
+      assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L05 separator ${separator}`);
+    }
+    await pathPage.locator('#sandbox-button').click();
+    await pathRun('echo \u00a51000 \uffe52000 > C:\u00a5Lab\u00a5Reports\u00a5amount.txt');
+    await pathPage.reload(); await pathPage.locator('#sandbox-button').click();
+    await pathRun('type C:\uffe5Lab\uffe5Reports\uffe5amount.txt');
+    assert.ok((await pathPage.locator('#console-output .history-entry').last().textContent()).includes('\u00a51000 \uffe52000'));
+    assert.deepEqual(pathErrors, []);
+    await pathContext.close();
+    console.log('Path input checks passed: backslash, slash, yen, fullwidth yen, grading, completion, literal text and reload.');
+
     // Cursor movement must not advance while typing; Japanese IME Enter must not execute.
     await page.locator(`.lesson-item[data-open="${Data.lessons[0].id}"]`).click();
     await input().fill('not executed'); await input().press('ArrowRight');

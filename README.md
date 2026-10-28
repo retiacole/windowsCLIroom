@@ -1,6 +1,6 @@
 # windowsCLIroom
 
-v0.1.1 — 初回レビューを反映した版。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
+v0.1.2 — 日本語環境での円記号を使ったパス入力に対応。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
 
 Windows の一般的な IT トラブルシューティングを、ブラウザーで練習する教材です。Windows 11 のコマンドプロンプト（CMD）を想定し、「説明を読む → コマンドを打つ → 結果を読み取る」を短い課題で学びます。日本語と英語を切り替えられます。
 
@@ -17,6 +17,8 @@ Windows の一般的な IT トラブルシューティングを、ブラウザ�
 「自由練習」では課題なしで操作できます。Wi-Fi の切断、DNS 設定、DNS キャッシュ、WinHTTP プロキシ、HTTP 503、VPN の経路、ポリシー、印刷サービス、ファイルの権限、システムファイルの異常を切り替えて、結果の違いを確認できます。各レッスンと自由練習は独立した仮想環境です。
 
 入力欄では Enter で実行、上下キーで履歴、Tab でコマンド名・パスの補完ができます。「コマンド帳」または `help` で、この教材が対応する書式を確認できます。
+
+Windows のパスの区切りはバックスラッシュ（`\`）です。日本語環境では円記号のように表示される場合があります。この教材では入力補助として、パス中の `¥`（U+00A5）・`￥`（U+FFE5）も区切りとして扱います。`C:\Lab`、`C:¥Lab`、`C:￥Lab`、`C:/Lab` で同じフォルダーを指定でき、採点と Tab 補完にも対応します。`echo` の本文・検索文字列・URL の円記号は変換しません。これは教材の入力補助であり、実機の Windows が別の Unicode 文字を常に同じように扱うという意味ではありません。
 
 完了後、入力欄が空なら右矢印キーで次に進めます。「処理の流れ」では、パイプの各段が受け取ったテキストと出力を確認できます。復旧の課題では、操作前後の確認順序と最終状態も採点します。やり直しても過去の完了記録は残り、現在の環境の合否とは区別して表示します。
 
@@ -148,6 +150,8 @@ Chromium の代わりにインストール済みの Chrome を使う場合は、
 **windowsCLIroom** is a Japanese/English learning simulator for everyday Windows IT troubleshooting. Open `windowsCLIroom.html` directly in a browser. The single HTML file works offline and requires no account, installation, or server.
 
 Five independent tracks cover CMD basics, PC and application inspection, networking and `curl.exe`, workplace AD diagnostics, and recovery exercises. Commands operate only on a fictional in-browser PC. They never execute Windows processes, access your real files, or make network requests. Only a documented subset of CMD syntax and options is implemented; use `help` or the command reference inside the app.
+
+As a simulator input aid, typed yen signs `¥` (U+00A5) and `￥` (U+FFE5) are accepted as path separators, including grading and Tab completion. Echo text, search strings, URLs and stored file contents are preserved. This does not imply that real Windows treats these Unicode characters as backslashes in every environment.
 
 Progress is saved in browser storage. Use **Settings & progress → Export progress / Import progress** to back it up or move it between browsers. Local-file storage behavior varies by browser.
 

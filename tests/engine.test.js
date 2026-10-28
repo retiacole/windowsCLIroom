@@ -206,3 +206,30 @@ test('a stopped service cannot satisfy a task that claims it is currently runnin
     assert.equal(Engine.grade(lesson,session,lesson.question?.answer).ok,false,id);
   }
 });
+
+for (const [label, separator] of [['backslash U+005C','\u005c'], ['slash U+002F','/'], ['yen U+00A5','\u00a5'], ['fullwidth yen U+FFE5','\uffe5']]) {
+  test(`path-based lesson solutions and restored evidence accept ${label}`, () => {
+    const lessons = Data.lessons.filter(l => l.solution.some(command => command.includes('\\')));
+    assert.ok(lessons.length > 0);
+    for (const lesson of lessons) {
+      const commands = lesson.solution.map(command => command.replaceAll('\\', separator));
+      const {cp,result} = attempt(lesson.id, commands);
+      assert.equal(result.ok, true, lesson.id + ': ' + JSON.stringify(result));
+      const progress = Engine.empty(); progress.checkpoints[lesson.id] = cp;
+      const restored = Engine.parse(JSON.stringify(progress)).checkpoints[lesson.id];
+      assert.equal(Engine.grade(lesson, restored.session, restored.answer, restored.evidence).ok, true, lesson.id + ' restored');
+    }
+  });
+}
+
+test('yen path support does not make a different folder satisfy the lesson', () => {
+  for (const yen of ['\u00a5', '\uffe5']) {
+    const prefix = 'C:' + yen + 'Lab';
+    const {lesson,cp,result} = attempt('list-files', ['dir /a ' + prefix, 'dir ' + prefix + yen + 'Reports']);
+    assert.ok(cp.session.history.every(entry => entry.code === 0), 'both commands run, but inspect the wrong second folder');
+    assert.equal(result.ok, false);
+    cp.evidence = Engine.observe(lesson, Shell.run(cp.session, 'dir ' + prefix + yen + 'Logs'), cp.evidence);
+    assert.equal(Engine.grade(lesson, cp.session, cp.answer, cp.evidence).ok, true);
+    assert.equal(attempt('quoted-path', ['type ' + prefix + yen + 'readme.txt']).result.ok, false);
+  }
+});

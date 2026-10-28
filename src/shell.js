@@ -58,6 +58,10 @@
     return value;
   }
 
+  // Accept Japanese keyboard yen signs only at user-entered path boundaries.
+  // Keep command text, search patterns, URLs and stored canonical paths intact.
+  function inputPath(value) { return value.replace(/[\/\u00a5\uffe5]/g, '\\'); }
+
   function resolve(session, input) {
     cleanString(input, 512, 'path');
     if (!input) return session.cwd;
@@ -244,8 +248,8 @@
     // Record operands where the implementation actually uses them. Text, search
     // patterns, options, and shell redirection targets must not become evidence
     // that a command inspected a particular file.
-    const pathOf = input => {
-      const resolved = resolve(session, input), path = get(session, resolved)?.path || resolved;
+    const pathOf = (input, fromInput = true) => {
+      const resolved = resolve(session, fromInput ? inputPath(input) : input), path = get(session, resolved)?.path || resolved;
       context.resolvedPaths.push(path);
       return path;
     };
@@ -262,7 +266,7 @@
       case 'cd': {
         let changeDrive = false;
         if (lower[0] === '/d') { changeDrive = true; args = args.slice(1); }
-        if (!args.length) return changeDrive ? unsupported(name) : ok(pathOf(session.cwd) + '\n');
+        if (!args.length) return changeDrive ? unsupported(name) : ok(pathOf(session.cwd, false) + '\n');
         if (args.length !== 1 || args[0].startsWith('/')) return unsupported(name);
         const path = pathOf(args[0]), target = get(session, path);
         if (!target || !target.dir) return fail('The system cannot find the path specified.');
@@ -274,7 +278,7 @@
         const options = new Set(), paths = [];
         for (const arg of args) { if (arg.startsWith('/')) options.add(arg.toLowerCase()); else paths.push(arg); }
         if (paths.length > 1 || [...options].some(o => !['/a', '/b', '/s'].includes(o))) return unsupported(name);
-        const path = pathOf(paths[0] || session.cwd), target = get(session, path);
+        const path = pathOf(paths[0] || session.cwd, paths.length > 0), target = get(session, path);
         if (!target) return fail('File Not Found');
         let files = target.dir ? Object.values(session.files).filter(f => f.path.toLowerCase() !== path.toLowerCase() && (options.has('/s') ? f.path.toLowerCase().startsWith(path.toLowerCase().replace(/\\$/, '') + '\\') : parent(f.path).toLowerCase() === path.toLowerCase())) : [target];
         files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
@@ -306,11 +310,11 @@
         const source = pathOf(args[0]), file = get(session, source);
         if (!file) return fail('The system cannot find the file specified.');
         if (file.dir) return unsupported(name, 'directory operations');
-        if (name === 'ren' && /[\\/:]/.test(args[1])) return unsupported(name, 'the new name must not contain a path');
-        let destination = resolve(session, name === 'ren' ? parent(source) + '\\' + args[1] : args[1]);
+        if (name === 'ren' && /[\\/:]/.test(inputPath(args[1]))) return unsupported(name, 'the new name must not contain a path');
+        let destination = resolve(session, name === 'ren' ? parent(source) + '\\' + args[1] : inputPath(args[1]));
         const target = get(session, destination);
         if (target && target.dir) destination = resolve(session, destination + '\\' + basename(source));
-        destination = pathOf(destination);
+        destination = pathOf(destination, false);
         if (source.toLowerCase() === destination.toLowerCase()) return fail('The source and destination are the same file.');
         if (get(session, destination) && !overwrite) return fail('[Simulator] Destination already exists. Use /y to overwrite with copy or move.');
         if (name !== 'copy') permitted(session, source);
@@ -411,12 +415,12 @@
       }
       case 'attrib': {
         if (args.length > 1 || args.some(a => /^[/+-]/.test(a))) return unsupported(name, 'display only');
-        const path = pathOf(args[0] || session.cwd), file = get(session, path); if (!file) return fail('File not found - ' + path);
+        const path = pathOf(args[0] || session.cwd, args.length > 0), file = get(session, path); if (!file) return fail('File not found - ' + path);
         const files = file.dir ? Object.values(session.files).filter(f => !f.dir && parent(f.path).toLowerCase() === path.toLowerCase()) : [file];
         return ok(files.map(f => 'A                    ' + f.path).join('\n') + (files.length ? '\n' : ''));
       }
       case 'fsutil': {
-        if (!(args.length === 3 && lower[0] === 'volume' && lower[1] === 'diskfree' && /^[cd]:\\?$/i.test(args[2]))) return unsupported(name);
+        if (!(args.length === 3 && lower[0] === 'volume' && lower[1] === 'diskfree' && /^[cd]:\\?$/i.test(inputPath(args[2])))) return unsupported(name);
         pathOf(args[2].slice(0, 2) + '\\');
         // Windows versions/filesystems can expose additional fields. Keep the
         // teaching excerpt explicit; these are fictional volume/quota values.
@@ -443,7 +447,7 @@
       }
       default: if (/^[cd]:$/.test(name)) {
         if (args.length) return unsupported(name);
-        session.cwd = pathOf(session.pc.driveCwds[name[0].toUpperCase()] || name[0].toUpperCase() + ':\\');
+        session.cwd = pathOf(session.pc.driveCwds[name[0].toUpperCase()] || name[0].toUpperCase() + ':\\', false);
         return ok('', ['cwd:' + session.cwd]);
       }
     }
@@ -479,7 +483,7 @@
         try {
           let outputPath;
           if (segment.redir) {
-            outputPath = resolve(session, segment.redir.path);
+            outputPath = resolve(session, inputPath(segment.redir.path));
             // Validate the destination before executing a command that may change state.
             permitted(session, outputPath);
             if (!get(session, parent(outputPath)) || !get(session, parent(outputPath)).dir || (get(session, outputPath) && get(session, outputPath).dir)) throw new Error('The output destination is not a writable file path.');
@@ -487,7 +491,7 @@
           answer = execute(session, name, args, stdin, context);
           answer = { ...ok(), ...answer };
           if (answer.writeFile && answer.code === 0) {
-            const path = resolve(session, answer.writeFile.path);
+            const path = resolve(session, inputPath(answer.writeFile.path));
             write(session, path, cleanString(answer.writeFile.content, MAX_FILE, 'command output'));
             answer.effects = (answer.effects || []).concat('write:' + path);
           }
@@ -520,7 +524,7 @@
     if (!/\s/.test(input)) return allReferences().map(r => r.name).filter(n => n.startsWith(input.toLowerCase())).sort();
     const match = /^(.*?)("[^" ]*[^" ]*|"[^"]*|[^\s"]*)$/.exec(input);
     if (!match) return [];
-    const prefix = match[1], fragment = match[2].replace(/^"/, '');
+    const prefix = match[1], fragment = inputPath(match[2].replace(/^"/, ''));
     if (!prefix.trim() || fragment.endsWith('"')) return [];
     let base;
     try { base = resolve(session, fragment || '.'); } catch (_) { return []; }

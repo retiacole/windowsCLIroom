@@ -358,3 +358,111 @@ test('disk and service outputs distinguish illustrative values and transition me
   assert.match(success(s, 'sc query Spooler').stdout, /RUNNING/);
   assert.match(success(s, 'net stop Spooler').stdout, /service is stopping\.\nThe Print Spooler service was stopped successfully/);
 });
+
+const inputPathSeparators = [
+  ['backslash U+005C', '\u005c'], ['slash U+002F', '/'],
+  ['yen U+00A5', '\u00a5'], ['fullwidth yen U+FFE5', '\uffe5']
+];
+
+test('path input variants support absolute, relative, quoted and environment-variable paths', () => {
+  for (const [label, separator] of inputPathSeparators) {
+    const s = Shell.createSession(), path = value => value.replaceAll('\\', separator);
+    success(s, 'cd /d ' + path('c:\\Lab'));
+    assert.equal(s.cwd, 'C:\\Lab', label);
+    assert.match(success(s, 'dir ' + path('C:\\Lab\\Logs')).stdout, /app\.log/, label);
+    assert.match(success(s, 'type ' + path('Logs\\app.log')).stdout, /Printer service unavailable/, label);
+    assert.match(success(s, 'type "' + path('C:\\Lab\\Shared Files\\guide.txt') + '"').stdout, /Team support guide/, label);
+    assert.match(success(s, 'type "' + path('Shared Files\\guide.txt') + '"').stdout, /Team support guide/, label);
+    assert.match(success(s, 'icacls "' + path('C:\\Lab\\Shared Files') + '"').stdout, /CORP\\student/, label);
+    success(s, 'cd /d "' + path('%USERPROFILE%\\Documents') + '"');
+    assert.equal(s.cwd, 'C:\\Users\\student\\Documents', label);
+    success(s, 'cd ' + path('..\\Desktop'));
+    assert.equal(s.cwd, 'C:\\Users\\student\\Desktop', label);
+    assert.match(success(s, 'fsutil volume diskfree ' + path('C:\\')).stdout, /Total free bytes/, label);
+    assert.deepEqual(roundtrip(s).history, s.history, label + ' canonical trace paths survive import');
+  }
+});
+
+test('path input variants create, copy, move and rename the intended files', () => {
+  for (const [label, separator] of inputPathSeparators) {
+    const s = fresh(), path = value => value.replaceAll('\\', separator);
+    success(s, 'mkdir ' + path('Work\\Daily'));
+    success(s, 'copy readme.txt ' + path('Work\\Daily'));
+    success(s, 'move ' + path('Work\\Daily\\readme.txt') + ' ' + path('C:\\Lab\\Reports'));
+    success(s, 'ren ' + path('Reports\\readme.txt') + ' final.txt');
+    assert.equal(s.files['c:\\lab\\reports\\final.txt'].content, 'PC-014 support notes\nContact: helpdesk\n', label);
+    assert.equal(s.files['c:\\lab\\work\\daily\\readme.txt'], undefined, label);
+    const before = JSON.stringify(s.files);
+    const invalid = run(s, 'ren ' + path('Reports\\final.txt') + ' ' + path('..\\moved.txt'));
+    assert.equal(invalid.unsupported, true, label + ' rename cannot accept a new path');
+    assert.equal(JSON.stringify(s.files), before, label + ' rejected rename preserves files');
+  }
+});
+
+test('redirection normalizes only its destination and keeps literal yen text unchanged', () => {
+  const literal = 'Price \u00a51000 / \uffe52000; C:\u00a5Lab';
+  for (const [label, separator] of inputPathSeparators) {
+    const s = Shell.createSession(), path = value => value.replaceAll('\\', separator);
+    success(s, 'echo ' + literal + ' > ' + path('C:\\Lab\\Reports\\price.txt'));
+    success(s, 'echo \u00a53000 >> ' + path('C:\\Lab\\Reports\\price.txt'));
+    assert.equal(success(s, 'type ' + path('C:\\Lab\\Reports\\price.txt')).stdout, literal + '\n\u00a53000\n', label);
+    assert.equal(s.files['c:\\lab\\reports\\price.txt'].content, literal + '\n\u00a53000\n', label);
+    assert.equal(Object.values(s.files).filter(f => /[\u00a5\uffe5]/.test(f.path)).length, 0, label + ' no stray literal-yen path');
+  }
+});
+
+test('yen currency text, literal search patterns and HTTP URLs are not rewritten as paths', () => {
+  for (const separator of ['\u00a5', '\uffe5']) {
+    const s = fresh(), literal = separator + '1000';
+    assert.equal(success(s, 'echo ' + literal + ' | findstr /l "' + literal + '"').stdout, literal + '\n');
+    const url = 'https://example.com/price' + literal;
+    const response = success(s, 'curl.exe -v ' + url);
+    assert.deepEqual(response.trace[0].args, ['-v', url]);
+    assert.ok(response.stderr.includes('> GET /price' + literal + ' HTTP/1.1'));
+    assert.match(response.stdout, /requested resource was not found/);
+  }
+});
+
+test('completion accepts yen input and returns usable canonical paths', () => {
+  for (const [label, separator] of inputPathSeparators) {
+    const s = fresh(), path = value => value.replaceAll('\\', separator);
+    assert.ok(Shell.complete(s, 'cd ' + path('C:\\La')).includes('cd C:\\Lab'), label);
+    assert.ok(Shell.complete(s, 'type ' + path('Logs\\a')).includes('type Logs\\app.log'), label);
+    assert.ok(Shell.complete(s, 'type "' + path('C:\\Lab\\Shared')).includes('type "C:\\Lab\\Shared Files\\guide.txt"'), label);
+    if (separator !== '/') {
+      // A leading slash is an option prefix in this simulator's CMD subset.
+      const candidate = 'dir C:\\Lab\\Logs';
+      assert.ok(Shell.complete(s, 'dir ' + path('\\Lab\\L')).includes(candidate), label + ' rooted path stays absolute');
+      assert.equal(run(s, candidate).code, 0, label);
+    }
+  }
+});
+
+test('UNC input using yen separators is rejected without filesystem changes', () => {
+  for (const [label, separator] of inputPathSeparators) {
+    const unc = [separator, separator, 'server', separator, 'share'].join('');
+    for (const command of ['dir ' + unc, 'mkdir ' + unc, 'copy readme.txt ' + unc, 'echo changed > ' + unc + separator + 'file.txt']) {
+      const s = fresh(), before = JSON.stringify(s.files);
+      assert.notEqual(run(s, command).code, 0, label + ': ' + command);
+      assert.equal(JSON.stringify(s.files), before, label + ' must not create a local imitation of UNC');
+      assert.equal(s.cwd, 'C:\\Lab', label);
+    }
+  }
+});
+
+test('legacy literal-yen file names and trace paths remain importable without reinterpretation', () => {
+  for (const yen of ['\u00a5', '\uffe5']) {
+    const raw = JSON.parse(JSON.stringify(fresh()));
+    // Version 0.1.1 treated Unicode yen as a literal filename character.
+    const legacyPath = 'C:\\Users\\student\\' + yen + 'Lab' + yen + 'Reports' + yen + 'price.txt';
+    raw.files[legacyPath.toLowerCase()] = {path:legacyPath, dir:false, content:yen + '1000\n'};
+    raw.history.push({line:'type ' + legacyPath, stdout:yen + '1000\n', stderr:'', code:0, effects:[], trace:[{
+      name:'type', args:[legacyPath], cwd:raw.cwd, resolvedPaths:[legacyPath],
+      command:'type ' + legacyPath, input:'', output:yen + '1000\n', error:'', code:0
+    }]});
+    const restored = Shell.restoreSession(raw);
+    assert.deepEqual(JSON.parse(JSON.stringify(restored.files)), raw.files);
+    assert.deepEqual(restored.history, raw.history);
+    assert.equal(restored.files['c:\\lab\\reports\\price.txt'], undefined);
+  }
+});
