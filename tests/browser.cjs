@@ -36,7 +36,9 @@ fs.mkdirSync(output, {recursive:true});
       assert.equal(await page.locator('#feedback .success').count(), 0, lesson.id+' starts fresh');
       await page.locator('[data-action="check"]').click();
       assert.equal(await page.locator('#feedback .success').count(), 0);
-      for (const command of lesson.solution) await run(command);
+      await page.locator('[data-action="solution"]').click();
+      const displayedSolution = await page.locator('.solution pre').textContent();
+      for (const command of displayedSolution.split('\n')) await run(command);
       if (lesson.id === 'help-first') assert.match(await page.locator('#console-output').textContent(),/対応コマンド|使い方|フォルダー/);
       if (lesson.id === 'renew-dhcp-lease') for(let i=0;i<90;i++) await run('echo practice-'+i);
       if (lesson.question) {
@@ -57,7 +59,7 @@ fs.mkdirSync(output, {recursive:true});
     }
     const completed = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem(WCREngine.KEY)).completed).length);
     assert.equal(completed, Data.lessons.length);
-    console.log(`Browser solutions: ${completed}/${Data.lessons.length} completed with correct interpretation.`);
+    console.log(`Browser displayed Japanese solutions: ${completed}/${Data.lessons.length} completed with correct interpretation.`);
 
     // Japanese keyboards can enter actual yen characters rather than U+005C.
     // Exercise the form, grading, completion and persistence in a clean profile.
@@ -83,6 +85,34 @@ fs.mkdirSync(output, {recursive:true});
       await pathRun(`type "C:${separator}Lab${separator}Shared Files${separator}guide.txt"`);
       assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L05 separator ${separator}`);
     }
+    // The requested L05 text, example insertion and solution follow the UI language.
+    await pathPage.locator('[data-action="reset"]').click();
+    assert.ok((await pathPage.locator('.task').textContent()).includes('C:¥Lab¥Shared Files¥guide.txt'));
+    const jaExample = await pathPage.locator('.example pre').textContent();
+    assert.equal(jaExample, 'type "C:¥Lab¥readme.txt"');
+    await pathPage.locator('.example [data-insert]').click();
+    assert.equal(await pathInput().inputValue(), jaExample);
+    for (let i=0; i<3; i++) await pathPage.locator('[data-action="hint"]').click();
+    assert.ok((await pathPage.locator('#hints').textContent()).includes('C:¥Lab¥Shared Files¥guide.txt'));
+    await pathPage.locator('[data-action="solution"]').click();
+    const jaSolution = await pathPage.locator('.solution pre').textContent();
+    assert.equal(jaSolution, 'type "C:¥Lab¥Shared Files¥guide.txt"');
+    await pathRun(jaSolution);
+    assert.equal(await pathPage.locator('#feedback .success').count(), 1);
+    await pathPage.locator('.task').screenshot({path:path.join(output,'task-path-ja.png')});
+    const draft = 'echo C:\\keep\\literal ¥1000';
+    await pathInput().fill(draft); await pathPage.locator('#language-button').click();
+    assert.ok((await pathPage.locator('.task').textContent()).includes('C:\\Lab\\Shared Files\\guide.txt'));
+    assert.equal(await pathPage.locator('.example pre').textContent(), 'type "C:\\Lab\\readme.txt"');
+    assert.equal(await pathPage.locator('.solution pre').textContent(), 'type "C:\\Lab\\Shared Files\\guide.txt"');
+    assert.equal(await pathInput().inputValue(), draft);
+    assert.equal(await pathPage.locator('#feedback .success').count(), 1);
+    await pathPage.locator('.task').screenshot({path:path.join(output,'task-path-en.png')});
+    await pathPage.locator('#language-button').click();
+    assert.ok((await pathPage.locator('.task').textContent()).includes('C:¥Lab¥Shared Files¥guide.txt'));
+    assert.equal(await pathInput().inputValue(), draft);
+    await pathPage.locator('#lesson-search').fill('C:¥Lab');
+    assert.ok(await pathPage.locator('.lesson-item[data-open="quoted-path"]').count());
     await pathPage.locator('#sandbox-button').click();
     await pathRun('echo \u00a51000 \uffe52000 > C:\u00a5Lab\u00a5Reports\u00a5amount.txt');
     await pathPage.reload(); await pathPage.locator('#sandbox-button').click();
@@ -90,7 +120,7 @@ fs.mkdirSync(output, {recursive:true});
     assert.ok((await pathPage.locator('#console-output .history-entry').last().textContent()).includes('\u00a51000 \uffe52000'));
     assert.deepEqual(pathErrors, []);
     await pathContext.close();
-    console.log('Path input checks passed: backslash, slash, yen, fullwidth yen, grading, completion, literal text and reload.');
+    console.log('Path display/input checks passed: JA/EN examples, insertion, copied solutions, language switch, preserved draft, grading, completion, literal text and reload.');
 
     // Cursor movement must not advance while typing; Japanese IME Enter must not execute.
     await page.locator(`.lesson-item[data-open="${Data.lessons[0].id}"]`).click();

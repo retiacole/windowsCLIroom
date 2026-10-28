@@ -223,7 +223,7 @@
     lesson({
       id: 'current-directory', track: 'basics', title: t('02 · 今いる場所を確かめる', '02 · Know where you are'),
       goal: t('現在のフォルダーを確認し、C:\\Lab に移動する。', 'Check the current folder and move to C:\\Lab.'),
-      explanation: [t('プロンプトの C:\\Users\\student> は現在地を表します。引数なしの cd でも現在のフォルダーを表示できます。', 'C:\\Users\\student> in the prompt shows your current location. Running cd without arguments also displays the current directory.'), t('C:\\Lab のようにドライブから書く指定は絶対パスです。cd /d はドライブも含めて移動します。', 'A path starting with a drive, such as C:\\Lab, is an absolute path. cd /d changes the drive as well as the directory.'), t('区切りはバックスラッシュ（\\）です。日本語環境では円記号のように表示されることがあります。この教材では入力を補助するため、パス中の円記号 ¥・￥ も区切りとして受け付けます。echo の本文や検索文字列の円記号は変えません。', 'The separator is a backslash (\\), which may look like a yen sign in Japanese environments. As an input aid, this simulator also accepts typed yen signs ¥ and ￥ as path separators. Yen signs in echo text and search strings stay unchanged.')],
+      explanation: [t('プロンプトの C:\\Users\\student> は現在地を表します。引数なしの cd でも現在のフォルダーを表示できます。', 'C:\\Users\\student> in the prompt shows your current location. Running cd without arguments also displays the current directory.'), t('C:\\Lab のようにドライブから書く指定は絶対パスです。cd /d はドライブも含めて移動します。', 'A path starting with a drive, such as C:\\Lab, is an absolute path. cd /d changes the drive as well as the directory.'), t('この教材では、日本語の課題やコマンド例のパス区切りを円記号（¥）、英語ではバックスラッシュで表示します。パスに入力した ¥・￥ も区切りとして受け付けるため、例のとおりに入力できます。echo の本文や検索文字列の円記号は変えません。', 'The separator is a backslash (\\), which may look like a yen sign in Japanese environments. As an input aid, this simulator also accepts typed yen signs ¥ and ￥ as path separators. Yen signs in echo text and search strings stay unchanged.')],
       task: t('cd で現在地を表示してから、C:\\Lab に移動してください。', 'Display your location with cd, then move to C:\\Lab.'),
       example: { command: c`cd /d C:\Users\student\Documents`, note: t('この例は Documents へ移動します。課題では移動先を変えます。', 'This example opens Documents. Use the destination in the task instead.') },
       hints: [t('cd だけなら、場所を変更せずに表示します。', 'cd on its own displays the location without moving.'), t('移動先は C:\\Lab です。', 'Your destination is C:\\Lab.'), t('cd の後ろに /d と移動先を書きます。', 'Follow cd with /d and the destination.')],
@@ -818,5 +818,5 @@
     { title: t('Microsoft Learn — Windows Time サービス', 'Microsoft Learn — Windows Time service'), url: 'https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings' },
     { title: t('Microsoft Support — Windows の Wi-Fi 接続問題と IP 構成の更新', 'Microsoft Support — Windows Wi-Fi troubleshooting and IP renewal'), url: 'https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows' }
   ];
-  return { version: '0.1.2', tracks, lessons, references };
+  return { version: '0.1.3', tracks, lessons, references };
 });
