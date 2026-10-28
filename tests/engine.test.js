@@ -83,6 +83,42 @@ test('L08 rejects ren used as a move and remains solvable with move followed by 
   const restored = Engine.parse(JSON.stringify(progress)).checkpoints[lesson.id];
   assert.equal(Engine.grade(lesson, restored.session, restored.answer, restored.evidence).ok, true);
 });
+test('L08 accepts move as a same-folder rename, including a saved previously rejected attempt', () => {
+  const commands = ['cd ../../', 'cd Lab', 'move draft.txt Reports', 'cd Reports', 'move draft.txt ticket-1042.txt'];
+  const {lesson,cp,result} = attempt('move-and-rename', commands);
+  assert.equal(result.ok, true);
+  assert.ok(cp.session.history.every(entry => entry.code === 0));
+  assert.equal(cp.session.files['c:\\lab\\reports\\draft.txt'], undefined);
+  assert.match(cp.session.files['c:\\lab\\reports\\ticket-1042.txt'].content, /Ticket 1042/);
+  const state = Engine.empty();
+  state.checkpoints[lesson.id] = cp;
+  // Signature and false rename evidence from v0.1.4 are refreshed from the saved execution history.
+  cp.evidence = {signature:'e1-83ab72e0',commands:[true,false],pipelines:[],ordered:0};
+  state.completed[lesson.id] = {at:'2026-10-28',hints:0,solutionUsed:false};
+  const restored = Engine.parse(JSON.stringify(state));
+  const saved = restored.checkpoints[lesson.id];
+  assert.deepEqual(saved.evidence.commands, [true,true]);
+  assert.notEqual(saved.evidence.signature, cp.evidence.signature);
+  assert.equal(Engine.grade(lesson, saved.session, saved.answer, saved.evidence).ok, true);
+  assert.deepEqual(saved.session.files, cp.session.files);
+  assert.deepEqual(restored.completed[lesson.id], state.completed[lesson.id]);
+});
+test('L08 move-based renaming requires the requested source and destination', () => {
+  const moveFirst = 'move C:\\Lab\\draft.txt C:\\Lab\\Reports';
+  for (const rename of [
+    'move C:\\Lab\\Reports\\draft.txt C:\\Lab\\Reports\\wrong.txt',
+    'move C:\\Lab\\Reports\\draft.txt C:\\Lab\\ticket-1042.txt',
+    'move C:\\Lab\\readme.txt C:\\Lab\\Reports\\ticket-1042.txt'
+  ]) {
+    const result = attempt('move-and-rename', [moveFirst, rename]).result;
+    assert.equal(result.ok, false, rename);
+    assert.equal(result.commands[1], false, 'a different transfer is not rename evidence');
+  }
+  for (const separator of ['\\', '/', '¥', '￥']) {
+    const commands = [moveFirst, 'move C:\\Lab\\Reports\\draft.txt C:\\Lab\\Reports\\ticket-1042.txt'].map(command => command.replaceAll('\\', separator));
+    assert.equal(attempt('move-and-rename', commands).result.ok, true, separator);
+  }
+});
 test('equivalent curl long and combined flags pass while HEAD and GET stay distinct',()=>{
   for(const id of ['curl-headers','capstone-stale-portal','capstone-http-503']) {
     for(const flag of ['--head','-Iv']) {

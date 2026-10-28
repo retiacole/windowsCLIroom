@@ -27,9 +27,10 @@
     });
   }
   function matches(c, trace, lineCode) {
-    const name = c.name.toLowerCase().replace(/\.exe$/, '');
+    const names = arr(c.anyNames === undefined ? c.name : c.anyNames).map(name => name.toLowerCase().replace(/\.exe$/, ''));
+    const name = trace.name;
     const expectedCode = c.expectCode === undefined ? 0 : c.expectCode;
-    if (trace.name !== name || trace.code !== expectedCode || lineCode !== expectedCode) return false;
+    if (!names.includes(name) || trace.code !== expectedCode || lineCode !== expectedCode) return false;
     const args = canonicalArgs(name, trace.args || []);
     const contains = arr(c.contains).every(value => {
       const expected = canonicalArgs(name, [String(value)]);

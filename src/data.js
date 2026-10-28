@@ -283,14 +283,14 @@
     }),
     lesson({
       id: 'move-and-rename', track: 'basics', title: t('08 · 移動と名前の変更', '08 · Move and rename'),
-      goal: t('move と ren で、作業ファイルを整理する。', 'Organize a working file with move and ren.'),
-      explanation: [t('move はファイルを移動し、ren は名前を変更します。copy と違い、移動後は元の場所からなくなります。', 'move relocates a file, and ren changes its name. Unlike copy, a move removes the file from its original location.'), t('ren の新しい名前は、この演習ではファイル名だけで指定します。フォルダーの移動は move で行います。', 'For ren, supply only the new file name in this exercise. Use move to change folders.')],
+      goal: t('ファイルの移動と名前変更で、作業ファイルを整理する。', 'Organize a working file by moving and renaming it.'),
+      explanation: [t('move はファイルを移動し、ren は名前を変更します。copy と違い、移動後は元の場所からなくなります。', 'move relocates a file, and ren changes its name. Unlike copy, a move removes the file from its original location.'), t('ren の新しい名前は、この演習ではファイル名だけで指定します。フォルダーの移動は move で行います。', 'For ren, supply only the new file name in this exercise. Use move to change folders.'), t('move も、移動先に別のファイル名を指定すると名前を変更できます。この課題では Reports へ移した後、ren と move のどちらで名前を変更してもかまいません。', 'move can also rename a file when its destination uses a different file name. After moving the file into Reports, you can use either ren or move to rename it in this task.')],
       task: t('C:\\Lab\\draft.txt を Reports へ移し、ticket-1042.txt に名前を変えてください。', 'Move C:\\Lab\\draft.txt into Reports, then rename it to ticket-1042.txt.'),
       example: { command: c`ren C:\Lab\example.txt final.txt`, note: t('名前の変更の形です。課題には別のファイル名を使います。', 'This shows the form of a rename. Use the file names in the task.') },
       hints: [t('move の順番も「元 先」です。', 'move also takes the source before the destination.'), t('移動先は C:\\Lab\\Reports\\draft.txt です。', 'Move it to C:\\Lab\\Reports\\draft.txt.'), t('移動後のパスを ren に渡し、新しい名前を続けます。', 'Pass the moved file path to ren, followed by its new name.')],
       solution: [c`move C:\Lab\draft.txt C:\Lab\Reports\draft.txt`, c`ren C:\Lab\Reports\draft.txt ticket-1042.txt`], success: t('作業ファイルを目的の場所と名前に整理できました。', 'Your working file now has the intended location and name.'),
       session: { files: [{ path: c`C:\Lab\draft.txt`, content: 'Ticket 1042 working notes\n' }] },
-      verify: { commands: [check('move', [c`C:\Lab\draft.txt`, c`C:\Lab\Reports\draft.txt`]), check('ren', [c`C:\Lab\Reports\draft.txt`, c`C:\Lab\Reports\ticket-1042.txt`])], files: [{ path: c`C:\Lab\Reports\ticket-1042.txt`, includes: ['Ticket 1042'] }] }
+      verify: { commands: [check('move', [c`C:\Lab\draft.txt`, c`C:\Lab\Reports\draft.txt`]), {...check('ren', [c`C:\Lab\Reports\draft.txt`, c`C:\Lab\Reports\ticket-1042.txt`]), anyNames: ['ren', 'move']}], files: [{ path: c`C:\Lab\Reports\ticket-1042.txt`, includes: ['Ticket 1042'] }] }
     }),
     lesson({
       id: 'save-and-append', track: 'basics', title: t('09 · 結果をファイルに残す', '09 · Save and append output'),
@@ -818,5 +818,5 @@
     { title: t('Microsoft Learn — Windows Time サービス', 'Microsoft Learn — Windows Time service'), url: 'https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings' },
     { title: t('Microsoft Support — Windows の Wi-Fi 接続問題と IP 構成の更新', 'Microsoft Support — Windows Wi-Fi troubleshooting and IP renewal'), url: 'https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows' }
   ];
-  return { version: '0.1.4', tracks, lessons, references };
+  return { version: '0.1.5', tracks, lessons, references };
 });

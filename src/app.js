@@ -59,7 +59,7 @@
     scenario: ['環境を選ぶ', 'Choose a scenario'], scenarioNote: ['切り替えると、練習室の履歴と仮想ファイルを初期化します。', 'Switching resets the playground’s history and virtual files.'],
     ready: ['準備できています', 'Ready to explore'], savedDetail: ['オフラインで利用できます。進捗はこのブラウザだけに保存されます。配布HTMLは変更しません。', 'Works offline. Progress stays in this browser; the distributed HTML file is not modified.'],
     noCandidates: ['補完候補がありません。', 'No completion candidates.'],
-    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.4 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.4 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
+    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.5 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.5 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
   };
   let state = Engine.empty(), view = 'home', currentId = '', composing = false, historyCursor = -1, historyDraft = '';
   let saveTimer, toastTimer, feedback = null, courseSearch = '', courseOpen = false, unreadableProgress = null;
