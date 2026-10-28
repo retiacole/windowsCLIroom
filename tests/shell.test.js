@@ -283,6 +283,37 @@ test('text, search patterns, options and output redirection cannot impersonate i
   assert.deepEqual(run(s, 'dir /bogus').trace[0].resolvedPaths, []);
 });
 
+test('ren rejects an existing directory instead of moving the file into it', () => {
+  for (const command of ['ren', 'rename']) {
+    for (const separator of ['\\', '/', '\u00a5', '\uffe5']) {
+      for (const destination of ['Reports', 'reports', '"Shared Files"', '.', '..']) {
+        const s = fresh(), before = JSON.stringify(s.files);
+        const source = 'C:\\Lab\\readme.txt'.replaceAll('\\', separator);
+        const result = Shell.run(s, `${command} ${source} ${destination}`, { language: 'ja' });
+        assert.notEqual(result.code, 0, `${command} ${source} ${destination}`);
+        assert.match(result.stderr, /ren.*move/);
+        assert.deepEqual(result.effects, []);
+        assert.equal(JSON.stringify(s.files), before, 'rejected rename preserves source and directories');
+      }
+    }
+  }
+  const s = fresh();
+  assert.match(run(s, 'ren readme.txt Reports').stderr, /cannot move.*use move/);
+  success(s, 'move readme.txt Reports');
+  success(s, 'ren Reports\\readme.txt ticket.txt');
+  assert.match(success(s, 'type Reports\\ticket.txt').stdout, /PC-014 support notes/);
+});
+
+test('ren rejects explicit new paths with every supported separator', () => {
+  for (const separator of ['\\', '/', '\u00a5', '\uffe5']) {
+    for (const newName of ['Reports\\new.txt', '..\\new.txt', 'C:\\Lab\\Reports', '\\Reports']) {
+      const s = fresh(), before = JSON.stringify(s.files);
+      assert.notEqual(run(s, 'ren readme.txt ' + newName.replaceAll('\\', separator)).code, 0);
+      assert.equal(JSON.stringify(s.files), before);
+    }
+  }
+});
+
 test('mutation trace paths retain the source and final destination across moves and renames', () => {
   const s = fresh();
   assert.deepEqual(success(s, 'mkdir Work').trace[0].resolvedPaths, ['C:\\Lab\\Work']);

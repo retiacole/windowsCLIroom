@@ -69,6 +69,20 @@ test('L01/L02 require no-argument observation before the requested help or move'
   assert.equal(attempt('current-directory',['cd /d C:\\Lab']).result.ok,false);
   assert.equal(attempt('current-directory',['cd','cd /d C:\\Lab']).result.ok,true);
 });
+test('L08 rejects ren used as a move and remains solvable with move followed by ren', () => {
+  const {lesson,cp,result} = attempt('move-and-rename', ['ren C:\\Lab\\draft.txt Reports']);
+  assert.notEqual(cp.session.history[0].code, 0);
+  assert.equal(result.ok, false);
+  assert.ok(cp.session.files['c:\\lab\\draft.txt']);
+  assert.equal(cp.session.files['c:\\lab\\reports\\draft.txt'], undefined);
+  for (const command of ['move C:¥Lab¥draft.txt C:¥Lab¥Reports', 'ren C:¥Lab¥Reports¥draft.txt ticket-1042.txt']) {
+    cp.evidence = Engine.observe(lesson, Shell.run(cp.session, command), cp.evidence);
+  }
+  assert.equal(Engine.grade(lesson, cp.session, cp.answer, cp.evidence).ok, true);
+  const progress = Engine.empty(); progress.checkpoints[lesson.id] = cp;
+  const restored = Engine.parse(JSON.stringify(progress)).checkpoints[lesson.id];
+  assert.equal(Engine.grade(lesson, restored.session, restored.answer, restored.evidence).ok, true);
+});
 test('equivalent curl long and combined flags pass while HEAD and GET stay distinct',()=>{
   for(const id of ['curl-headers','capstone-stale-portal','capstone-http-503']) {
     for(const flag of ['--head','-Iv']) {

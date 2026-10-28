@@ -21,12 +21,14 @@
 @media(min-width:981px){.lesson-nav{max-height:calc(100vh - 76px);overflow-y:auto;overscroll-behavior:contain;position:sticky;top:0;align-self:start;scrollbar-width:thin}}
 
 @media(max-width:560px){.course-grid{grid-template-columns:1fr}.course-card{min-height:188px;padding:21px}.course-card h3{font-size:18px}.course-card p{font-size:13px}.course-meta{font-size:12px}.hero h1{font-size:31px}.console .terminal-top{flex-wrap:wrap;gap:8px}.terminal-actions{margin-left:auto}.terminal-actions button{white-space:nowrap}.run-button{white-space:nowrap;flex:none}}
+
+.check-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:15px}.check-actions #lesson-reset{font-size:12px}
 </style>
 </head>
 <body>
   <a class="skip" href="#main">本文へ / Skip to content</a>
   <header class="topbar">
-    <button id="brand" class="brand" aria-label="windowsCLIroom home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>windows<span class="brand-cli">CLI</span>room</span><span class="version">0.1.3</span></button>
+    <button id="brand" class="brand" aria-label="windowsCLIroom home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>windows<span class="brand-cli">CLI</span>room</span><span class="version">0.1.4</span></button>
     <nav aria-label="Main"><button id="home-button" class="nav-button"></button><button id="sandbox-button" class="nav-button"></button><button id="reference-button" class="nav-button"></button><button id="language-button" class="language" lang="en">EN</button><button id="menu-button" class="menu-button" aria-label="Settings / 設定">☰</button></nav>
   </header>
   <div id="storage-warning" class="notice warning" role="status" hidden></div>
@@ -790,6 +792,9 @@
         if (name === 'ren' && /[\\/:]/.test(inputPath(args[1]))) return unsupported(name, 'the new name must not contain a path');
         let destination = resolve(session, name === 'ren' ? parent(source) + '\\' + args[1] : inputPath(args[1]));
         const target = get(session, destination);
+        if (name === 'ren' && target?.dir) return fail(language === 'ja'
+          ? '同じ名前のフォルダーが既に存在します。ren はフォルダーへ移動できません。移動には move を使ってください。'
+          : 'A directory with this name already exists. ren cannot move files into a directory; use move.');
         if (target && target.dir) destination = resolve(session, destination + '\\' + basename(source));
         destination = pathOf(destination, false);
         if (source.toLowerCase() === destination.toLowerCase()) return fail('The source and destination are the same file.');
@@ -1916,7 +1921,7 @@
     { title: t('Microsoft Learn — Windows Time サービス', 'Microsoft Learn — Windows Time service'), url: 'https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings' },
     { title: t('Microsoft Support — Windows の Wi-Fi 接続問題と IP 構成の更新', 'Microsoft Support — Windows Wi-Fi troubleshooting and IP renewal'), url: 'https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows' }
   ];
-  return { version: '0.1.3', tracks, lessons, references };
+  return { version: '0.1.4', tracks, lessons, references };
 });
 
 ;
@@ -2132,7 +2137,7 @@
     interpretation: ['結果を読み取る', 'INTERPRET THE RESULT'], check: ['結果を確認する', 'Check my work'],
     previous: ['← 前へ', '← Previous'], next: ['次へ →', 'Next →'], finish: ['コース一覧へ →', 'Back to courses →'],
     lessonList: ['レッスン一覧', 'Lesson list'], terminal: ['コマンドを試す', 'TRY A COMMAND'], simulated: ['仮想PC', 'SIMULATED'],
-    clear: ['表示を消す', 'Clear'], reset: ['この環境をやり直す', 'Reset this environment'],
+    resetLesson: ['この問題をリセット', 'Reset this lesson'], clear: ['表示を消す', 'Clear'], reset: ['この環境をやり直す', 'Reset this environment'],
     welcome: ['Windows 11 / CMD の学習用環境です。\nhelp で対応コマンドを確認できます。', 'Learning environment: Windows 11 / CMD.\nType help to see supported commands.'],
     input: ['コマンドを入力', 'Enter a command'], run: ['実行', 'Run'], history: ['履歴', 'history'], completion: ['補完', 'complete'],
     keyboardNext: ['完了後・入力欄が空なら次へ', 'next when complete and input is empty'],
@@ -2151,7 +2156,7 @@
     settings: ['設定と学習データ', 'Settings & progress'], export: ['進捗を書き出す', 'Export progress'], import: ['進捗を読み込む', 'Import progress'],
     dataInfo: ['レッスンの完了状態、実行履歴、仮想ファイルをJSONで保存します。別のブラウザに移すときにも使えます。', 'Save completed lessons, command history, and virtual files as JSON. You can use the file to move to another browser.'],
     erase: ['学習データをすべて消す', 'Erase all learning data'], eraseConfirm: ['すべての進捗と仮想ファイルを消します。必要なら先に書き出してください。消しますか？', 'Erase all progress and virtual files? Export your data first if you need a backup.'],
-    resetConfirm: ['このレッスンの実行履歴と仮想ファイルを初期状態に戻します。完了記録は残ります。やり直しますか？', 'Reset this environment’s command history and virtual files? Your completion record will be kept.'],
+    resetConfirm: ['この問題のファイル・操作履歴・回答・ヒントを最初の状態に戻します。ほかの問題の進捗と、これまでの完了記録は残ります。リセットしますか？', 'Reset this lesson’s files, command history, answers and hints? Other lessons and your past completion records will be kept.'],
     imported: ['進捗を読み込みました。', 'Progress imported.'], importFail: ['読み込めませんでした。有効なwindowsCLIroomの進捗JSONか確認してください。現在の進捗は変更していません。', 'Could not import this file. Use a valid windowsCLIroom progress JSON. Your current progress has not changed.'],
     importConfirm: ['現在の学習データを、ファイルの内容で置き換えますか？', 'Replace your current learning data with this file?'],
     exported: ['進捗ファイルを書き出しました。', 'Progress file exported.'], erased: ['学習データを初期化しました。', 'Learning data reset.'],
@@ -2161,7 +2166,7 @@
     scenario: ['環境を選ぶ', 'Choose a scenario'], scenarioNote: ['切り替えると、練習室の履歴と仮想ファイルを初期化します。', 'Switching resets the playground’s history and virtual files.'],
     ready: ['準備できています', 'Ready to explore'], savedDetail: ['オフラインで利用できます。進捗はこのブラウザだけに保存されます。配布HTMLは変更しません。', 'Works offline. Progress stays in this browser; the distributed HTML file is not modified.'],
     noCandidates: ['補完候補がありません。', 'No completion candidates.'],
-    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.3 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.3 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
+    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.4 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.4 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
   };
   let state = Engine.empty(), view = 'home', currentId = '', composing = false, historyCursor = -1, historyDraft = '';
   let saveTimer, toastTimer, feedback = null, courseSearch = '', courseOpen = false, unreadableProgress = null;
@@ -2249,7 +2254,7 @@
     const l = lesson();
     if (!l) return `<div class="breadcrumb"><span>PLAYGROUND</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${t('sandbox')}</h1><p class="lesson-goal">${t('sandboxGoal')}</p><div class="lesson-explanation"><p>${t('sandboxBody')}</p></div><label class="label" for="scenario-select">${t('scenario')}</label><select id="scenario-select" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px">${scenarios.map(s => `<option value="${s[0]}" ${cp().session.scenario === s[0] ? 'selected' : ''}>${escape(s[state.language === 'ja' ? 1 : 2])}</option>`).join('')}</select><p class="micro">${t('scenarioNote')}</p><section class="sandbox-instructions"><p class="label">${t('example')}</p><div class="sandbox-commands">${['help','dir C:\\Lab','whoami /all','ipconfig /all','ping intranet.corp.example','curl.exe -I https://intranet.corp.example','sc.exe query Spooler','netsh winhttp show proxy'].map(c => `<button data-insert="${escape(loc(c))}">${escape(loc(c))}</button>`).join('')}</div></section><p class="sim-note">${t('simNote')}</p>`;
     const index = Data.lessons.indexOf(l), tr = trackById(l.track);
-    return `<div class="breadcrumb"><span>${escape(loc(tr.title))} · ${String(index + 1).padStart(2, '0')} / ${Data.lessons.length}</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${escape(loc(l.title))}</h1><p class="lesson-goal">${escape(loc(l.goal))}</p><div class="lesson-explanation">${l.explanation.map(p => `<p>${escape(loc(p))}</p>`).join('')}</div><div class="example"><p class="label">${t('example')}</p><pre>${escape(loc(l.example.command))}</pre><p class="example-note">${escape(loc(l.example.note))}</p><button class="small" style="margin-top:9px" data-insert="${escape(loc(l.example.command))}">${t('fillExample')}</button></div><div class="task"><p class="label">${t('task')}</p><p>${escape(loc(l.task))}</p></div><div id="hints"></div>${l.question ? `<section class="question"><p class="label">${t('interpretation')}</p><fieldset><legend>${escape(loc(l.question.prompt))}</legend>${l.question.choices.map(ch => `<label class="choice"><input type="radio" name="answer" value="${escape(ch.id)}" ${cp().answer === ch.id ? 'checked' : ''}><span>${escape(loc(ch.text))}</span></label>`).join('')}</fieldset></section>` : ''}<button id="check-button" class="primary" data-action="check" style="margin-top:15px">${t('check')}</button><div id="feedback" aria-live="polite"></div><div class="lesson-controls"><button class="small" data-action="previous" ${index === 0 ? 'disabled' : ''}>${t('previous')}</button><button id="next-button" class="secondary" data-action="next">${index === Data.lessons.length - 1 ? t('finish') : t('next')}</button></div>`;
+    return `<div class="breadcrumb"><span>${escape(loc(tr.title))} · ${String(index + 1).padStart(2, '0')} / ${Data.lessons.length}</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${escape(loc(l.title))}</h1><p class="lesson-goal">${escape(loc(l.goal))}</p><div class="lesson-explanation">${l.explanation.map(p => `<p>${escape(loc(p))}</p>`).join('')}</div><div class="example"><p class="label">${t('example')}</p><pre>${escape(loc(l.example.command))}</pre><p class="example-note">${escape(loc(l.example.note))}</p><button class="small" style="margin-top:9px" data-insert="${escape(loc(l.example.command))}">${t('fillExample')}</button></div><div class="task"><p class="label">${t('task')}</p><p>${escape(loc(l.task))}</p></div><div id="hints"></div>${l.question ? `<section class="question"><p class="label">${t('interpretation')}</p><fieldset><legend>${escape(loc(l.question.prompt))}</legend>${l.question.choices.map(ch => `<label class="choice"><input type="radio" name="answer" value="${escape(ch.id)}" ${cp().answer === ch.id ? 'checked' : ''}><span>${escape(loc(ch.text))}</span></label>`).join('')}</fieldset></section>` : ''}<div class="check-actions"><button id="check-button" class="primary" data-action="check">${t('check')}</button><button id="lesson-reset" data-action="reset">↺ ${t('resetLesson')}</button></div><div id="feedback" aria-live="polite"></div><div class="lesson-controls"><button class="small" data-action="previous" ${index === 0 ? 'disabled' : ''}>${t('previous')}</button><button id="next-button" class="secondary" data-action="next">${index === Data.lessons.length - 1 ? t('finish') : t('next')}</button></div>`;
   }
   function consoleHTML() {
     return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div></form></div><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
@@ -2399,7 +2404,7 @@
     else if (name === 'previous') { const i = Data.lessons.indexOf(lesson()); if (i > 0) openLesson(Data.lessons[i - 1].id); }
     else if (name === 'next') nextLesson();
     else if (name === 'clear') { visibleFrom[currentId] = cp().session.history.length; renderConsole(); }
-    else if (name === 'reset' && confirm(t('resetConfirm'))) { state.checkpoints[currentId] = Engine.fresh(lesson() || { session: { scenario: cp().session.scenario } }); visibleFrom[currentId] = 0; feedback = null; render(); save(); }
+    else if (name === 'reset' && confirm(t('resetConfirm'))) { state.checkpoints[currentId] = Engine.fresh(lesson() || { session: { scenario: cp().session.scenario } }); visibleFrom[currentId] = 0; historyCursor = -1; historyDraft = ''; feedback = null; render(); save(); }
     else if (name === 'export') exportData();
     else if (name === 'rescue' && unreadableProgress !== null) exportData(true);
     else if (name === 'import') $('import-file').click();

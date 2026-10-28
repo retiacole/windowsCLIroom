@@ -13,3 +13,5 @@
 @media(min-width:981px){.lesson-nav{max-height:calc(100vh - 76px);overflow-y:auto;overscroll-behavior:contain;position:sticky;top:0;align-self:start;scrollbar-width:thin}}
 
 @media(max-width:560px){.course-grid{grid-template-columns:1fr}.course-card{min-height:188px;padding:21px}.course-card h3{font-size:18px}.course-card p{font-size:13px}.course-meta{font-size:12px}.hero h1{font-size:31px}.console .terminal-top{flex-wrap:wrap;gap:8px}.terminal-actions{margin-left:auto}.terminal-actions button{white-space:nowrap}.run-button{white-space:nowrap;flex:none}}
+
+.check-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:15px}.check-actions #lesson-reset{font-size:12px}

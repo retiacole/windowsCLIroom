@@ -313,6 +313,9 @@
         if (name === 'ren' && /[\\/:]/.test(inputPath(args[1]))) return unsupported(name, 'the new name must not contain a path');
         let destination = resolve(session, name === 'ren' ? parent(source) + '\\' + args[1] : inputPath(args[1]));
         const target = get(session, destination);
+        if (name === 'ren' && target?.dir) return fail(language === 'ja'
+          ? '同じ名前のフォルダーが既に存在します。ren はフォルダーへ移動できません。移動には move を使ってください。'
+          : 'A directory with this name already exists. ren cannot move files into a directory; use move.');
         if (target && target.dir) destination = resolve(session, destination + '\\' + basename(source));
         destination = pathOf(destination, false);
         if (source.toLowerCase() === destination.toLowerCase()) return fail('The source and destination are the same file.');

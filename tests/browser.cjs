@@ -73,7 +73,7 @@ fs.mkdirSync(output, {recursive:true});
     await pathPage.locator('.hero-actions [data-open]').click();
     for (const separator of ['\\', '/', '\u00a5', '\uffe5']) {
       await pathPage.locator('.lesson-item[data-open="current-directory"]').click();
-      await pathPage.locator('[data-action="reset"]').click();
+      await pathPage.locator('[data-action="reset"]').last().click();
       await pathRun('cd'); await pathRun(`cd /d c:${separator}Lab`);
       assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L02 separator ${separator}`);
       assert.ok((await pathPage.locator('#prompt-path').textContent()).includes('C:\\Lab'));
@@ -81,12 +81,12 @@ fs.mkdirSync(output, {recursive:true});
       await pathInput().press('Tab');
       assert.equal(await pathInput().inputValue(), 'type C:\\Lab\\readme.txt');
       await pathPage.locator('.lesson-item[data-open="quoted-path"]').click();
-      await pathPage.locator('[data-action="reset"]').click();
+      await pathPage.locator('[data-action="reset"]').last().click();
       await pathRun(`type "C:${separator}Lab${separator}Shared Files${separator}guide.txt"`);
       assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L05 separator ${separator}`);
     }
     // The requested L05 text, example insertion and solution follow the UI language.
-    await pathPage.locator('[data-action="reset"]').click();
+    await pathPage.locator('[data-action="reset"]').last().click();
     assert.ok((await pathPage.locator('.task').textContent()).includes('C:¥Lab¥Shared Files¥guide.txt'));
     const jaExample = await pathPage.locator('.example pre').textContent();
     assert.equal(jaExample, 'type "C:¥Lab¥readme.txt"');
@@ -185,9 +185,30 @@ fs.mkdirSync(output, {recursive:true});
     // A saved completion must not claim the reset environment already meets the task.
     await page.setViewportSize({width:1440,height:1000});
     await page.locator(`.lesson-item[data-open="${Data.lessons[0].id}"]`).click();
-    await page.locator('[data-action="reset"]').click();
+    await page.locator('[data-action="reset"]').last().click();
     assert.equal(await page.locator('#feedback .success').count(),0);
     assert.equal(await page.locator('#feedback .record').count(),1);
+
+    // The visible lesson reset repairs a changed environment, without touching other lessons.
+    await page.locator('.lesson-item[data-open="move-and-rename"]').click();
+    const beforeReset = await page.evaluate(() => JSON.parse(localStorage.getItem(WCREngine.KEY)));
+    await run('echo changed > C:\\Lab\\Reports\\ticket-1042.txt');
+    await input().fill('unfinished command');
+    await page.locator('#lesson-reset').click();
+    assert.equal(await input().inputValue(), '');
+    assert.equal(await page.locator('#console-output .history-entry').count(), 0);
+    assert.equal(await page.locator('.solution').count(), 0);
+    assert.equal(await page.locator('#feedback .success').count(), 0);
+    const afterReset = await page.evaluate(() => JSON.parse(localStorage.getItem(WCREngine.KEY)));
+    assert.deepEqual(afterReset.completed, beforeReset.completed);
+    assert.deepEqual(afterReset.checkpoints['read-a-log'], beforeReset.checkpoints['read-a-log']);
+    assert.equal(afterReset.checkpoints['move-and-rename'].answer, '');
+    assert.equal(afterReset.checkpoints['move-and-rename'].hintLevel, 0);
+    assert.ok(afterReset.checkpoints['move-and-rename'].session.files['c:\\lab\\draft.txt']);
+    assert.equal(afterReset.checkpoints['move-and-rename'].session.files['c:\\lab\\reports\\ticket-1042.txt'], undefined);
+    for(const command of Data.lessons.find(l=>l.id==='move-and-rename').solution) await run(command);
+    assert.equal(await page.locator('#feedback .success').count(), 1);
+    console.log('Visible lesson reset restores files, history, draft, hints and grading while retaining other lessons and completed records.');
 
     // Existing v0.1.0 progress migrates in the real UI.
     const legacyContext=await browser.newContext();
