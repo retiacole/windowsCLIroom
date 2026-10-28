@@ -17,9 +17,9 @@
   // Choices describe plausible misreadings of the observed evidence, not unrelated actions.
   const interpretationChoices = {
     'read-a-log': [
-      opt('09:05 の再試行予定を、印刷の完了記録として扱う。', 'Treat the 09:05 scheduled retry as a completed print job.', 'Retry scheduled は予定です。09:08 にはジョブの失敗が記録されています。', 'Retry scheduled is a plan. The 09:08 entry records a failed job.'),
-      opt('印刷の失敗を確認し、サービスの現在状態を調べる。', 'Identify the printing failure and check the service’s current state.', '印刷サービスとジョブのエラーがあります。現在の状態は追加照会が必要です。', 'The log records service and job errors. Current state needs a separate query.'),
-      opt('09:00 の起動記録から、09:08 も正常稼働と判断する。', 'Use the 09:00 startup entry to infer normal operation at 09:08.', '起動の記録は、その後の正常動作を保証しません。後続の ERROR も読みます。', 'Startup does not establish later health. Read the subsequent ERROR entries too.')
+      opt("09:05 に印刷が完了したものとして、対応を終了する。", "Close the ticket on the basis that printing completed at 09:05.", 'Retry scheduled は予定です。09:08 にはジョブの失敗が記録されています。', 'Retry scheduled is a plan. The 09:08 entry records a failed job.'),
+      opt("印刷の失敗が記録されており、サービスの現在状態は別の照会が必要。", "Printing failures are recorded, so query the service’s current state separately.", '印刷サービスとジョブのエラーがあります。現在の状態は追加照会が必要です。', 'The log records service and job errors. Current state needs a separate query.'),
+      opt("09:00 の起動後は正常稼働として扱い、アプリ以外を調べる。", "Assume normal operation after the 09:00 startup and investigate outside the app.", '起動の記録は、その後の正常動作を保証しません。後続の ERROR も読みます。', 'Startup does not establish later health. Read the subsequent ERROR entries too.')
     ],
     'list-processes': [
       opt('アプリのインストール時に決まる識別番号。', 'An identifier assigned when an app is installed.', 'PID は実行中のプロセスの番号です。再起動時には変わり得ます。', 'A PID identifies a running process and may change after it restarts.'),
@@ -32,9 +32,9 @@
       opt('終了メッセージを見てから、対象が正しかったか確認する。', 'Check whether the target was correct after reading the termination result.', '終了後では未保存データを戻せない場合があります。対象確認は操作の前です。', 'Unsaved work may be lost by then. Identify the target before acting.')
     ],
     'service-state': [
-      opt('STOPPED を印刷待ちの状態と読み、正常として扱う。', 'Interpret STOPPED as waiting for a print job and treat it as healthy.', 'STOPPED はサービス停止です。ジョブ待ちの RUNNING とは異なります。', 'STOPPED means the service is stopped, not running while waiting for work.'),
-      opt('停止の背景とログを確認し、開始操作を検討する。', 'Review the context and logs, then consider starting the service.', '停止は確認済みです。開始の可否と背景を確認して対応します。', 'The stopped state is established. Check the context and whether starting it is appropriate.'),
-      opt('サービスが登録されていないと読み、追加導入を検討する。', 'Interpret the result as a missing service and consider installing it.', 'query は Spooler を見つけて STATE を返しています。未登録ではありません。', 'The query found Spooler and returned its STATE; the service is installed.')
+      opt("ジョブ待ちと判断し、プリンター側の待機設定を調べる。", "Interpret it as waiting for a job and inspect the printer’s idle settings.", 'STOPPED はサービス停止です。ジョブ待ちの RUNNING とは異なります。', 'STOPPED means the service is stopped, not running while waiting for work.'),
+      opt("停止状態と読み、停止理由と開始可否を調べる。", "Read it as stopped and investigate why and whether it can be started.", '停止は確認済みです。開始の可否と背景を確認して対応します。', 'The stopped state is established. Check the context and whether starting it is appropriate.'),
+      opt("サービスの未登録を疑い、追加導入の手順を確認する。", "Suspect a missing service and review the installation procedure.", 'query は Spooler を見つけて STATE を返しています。未登録ではありません。', 'The query found Spooler and returned its STATE; the service is installed.')
     ],
     'service-configuration': [
       opt('自動起動に設定されているため、現在も動作中。', 'It is running now because its startup mode is automatic.', 'AUTO_START は設定です。現在の STATE は STOPPED です。', 'AUTO_START is configuration. The current STATE is STOPPED.'),
@@ -42,14 +42,14 @@
       opt('現在停止しているため、起動方法は無効に設定済み。', 'Its startup mode is disabled because it is currently stopped.', '停止中でも起動方法は自動に設定できます。qc は AUTO_START を示しています。', 'A stopped service can be configured as automatic; qc shows AUTO_START.')
     ],
     'read-file-permissions': [
-      opt('(RX) を変更可能と読み、この行だけで書き込み可と判断する。', 'Read (RX) as Modify and infer write access from this entry.', '(RX) は読み取りと実行です。変更を表す (M) とは違います。', '(RX) means Read and execute. Modify is (M).'),
-      opt('権限とグループを確認し、共有経由なら共有権限も照合する。', 'Check permissions and groups, plus share permissions for network access.', 'この RX の行だけでは実効アクセスの全体は分かりません。', 'This RX entry alone does not describe all effective access.'),
-      opt('(OI)(CI) を自分の権限名と読み、子への適用は考慮しない。', 'Read (OI)(CI) as permission names for this folder, ignoring child inheritance.', '(OI) は子ファイル、(CI) は子フォルダーへの継承に関するフラグです。', '(OI) concerns inheritance by child files; (CI) concerns child folders.')
+      opt("(RX) の書き込み許可を前提に、共有以外の保存先を調べる。", "Assume (RX) permits writing and investigate storage outside the share.", '(RX) は読み取りと実行です。変更を表す (M) とは違います。', '(RX) means Read and execute. Modify is (M).'),
+      opt("(RX) だけで断定せず、グループと共有権限も照合する。", "Compare groups and share permissions too, because (RX) alone does not describe effective access.", 'この RX の行だけでは実効アクセスの全体は分かりません。', 'This RX entry alone does not describe all effective access.'),
+      opt("(OI)(CI) をこのフォルダーだけの許可として扱い、子への継承を除外する。", "Treat (OI)(CI) as permissions only for this folder and disregard child inheritance.", '(OI) は子ファイル、(CI) は子フォルダーへの継承に関するフラグです。', '(OI) concerns inheritance by child files; (CI) concerns child folders.')
     ],
     'disk-free-space': [
       opt('Total bytes の値を、更新で利用できる容量として比較する。', 'Compare Total bytes with the update’s space requirement.', 'Total bytes は総容量です。現在利用できる空き容量とは違います。', 'Total bytes is the volume’s capacity, not currently available space.'),
       opt('利用者が使える空き容量と必要量を比べ、整理方法を選ぶ。', 'Compare caller-available free space with the requirement, then plan cleanup.', '必要量との比較には Total quota free bytes など利用可能量の欄を使います。', 'Compare the requirement with available space, such as Total quota free bytes.'),
-      opt('空き容量の照会が成功したので、ディスクの正常性を確認済みとする。', 'Treat a successful space query as verification of disk health.', 'diskfree は容量の照会です。媒体やファイルシステムの健全性の検査ではありません。', 'diskfree queries space; it does not test storage or filesystem health.')
+      opt("容量の照会成功を健全性の検査完了と読み、ディスクの調査を終える。", "Read a successful space query as a completed health test and end the disk investigation.", 'diskfree は容量の照会です。媒体やファイルシステムの健全性の検査ではありません。', 'diskfree queries space; it does not test storage or filesystem health.')
     ],
     'ip-address-and-dns': [
       opt('別ネットワーク宛てのパケットを転送する。', 'Forward packets toward other networks.', 'その役割は通常ゲートウェイです。この演習では 10.20.0.1 です。', 'That is normally the gateway’s role; here it is 10.20.0.1.'),
@@ -57,8 +57,8 @@
       opt('PC に IP アドレスのリースを配布する。', 'Distribute IP address leases to PCs.', 'リース配布は DHCP の役割です。DNS の名前解決とは区別します。', 'DHCP distributes leases. That differs from DNS name resolution.')
     ],
     'wifi-connection': [
-      opt('接続済みとして DHCP リースの更新を優先する。', 'Treat Wi-Fi as connected and prioritize a DHCP renewal.', 'State は disconnected です。まず無線接続を確認します。', 'State is disconnected. Check the wireless connection first.'),
-      opt('接続先と無線の有効状態を確かめ、接続を確認する。', 'Check the selected network and radio state, then establish connectivity.', '無線の未接続と Media disconnected が一致しています。接続自体が出発点です。', 'The wireless and adapter outputs both show disconnection. Start with the connection.'),
+      opt("無線接続は成立済みと読み、DHCP のリース期間を確認する。", "Read Wi-Fi as connected and check the DHCP lease duration.", 'State は disconnected です。まず無線接続を確認します。', 'State is disconnected. Check the wireless connection first.'),
+      opt("無線が未接続と読み、接続先の選択と無線の有効状態を確認する。", "Read the wireless connection as disconnected and check the selected network and radio state.", '無線の未接続と Media disconnected が一致しています。接続自体が出発点です。', 'The wireless and adapter outputs both show disconnection. Start with the connection.'),
       opt('DNS の回答不良として、社内名の登録を確認する。', 'Treat this as a DNS-answer problem and inspect the internal name record.', 'まだ DNS の回答を調べられる接続がありません。出力が示すのは未接続です。', 'The evidence shows no connection, not a bad DNS answer.')
     ],
     'ping-loopback': [
@@ -67,24 +67,24 @@
       opt('Wi-Fi の接続先から、この PC へ応答が返った。', 'The Wi-Fi access point sent a reply back to this PC.', 'ループバックの通信は Wi-Fi の接続を検証しません。', 'Loopback traffic does not test the Wi-Fi connection.')
     ],
     'compare-dns-servers': [
-      opt('社内名のレコードが存在しないとして、登録を依頼する。', 'Request a new internal record because the name does not exist.', '10.20.0.10 を指定した照会では既存の回答が得られています。', 'The query to 10.20.0.10 returned an existing record.'),
-      opt('設定中の DNS と、DHCP・VPN の想定設定を照合する。', 'Compare the selected DNS server with intended DHCP and VPN settings.', '問い合わせ先で結果が変わります。まず利用すべき DNS と設定を照合します。', 'The result changes with the DNS server. Check the intended server and configuration.'),
-      opt('PC のキャッシュだけの問題として、flushdns を優先する。', 'Prioritize flushdns because only the local cache is involved.', '今回比較した nslookup は DNS への直接照会です。問い合わせ先の差が根拠です。', 'These nslookup commands query DNS directly. The evidence is a difference between servers.')
+      opt("社内名の登録漏れとして、DNS サーバー側のレコードを調べる。", "Treat the internal name as missing and inspect the DNS server’s records.", '10.20.0.10 を指定した照会では既存の回答が得られています。', 'The query to 10.20.0.10 returned an existing record.'),
+      opt("利用すべき DNS と DHCP・VPN の配布設定を照合する。", "Compare the intended DNS server with DHCP and VPN settings.", '問い合わせ先で結果が変わります。まず利用すべき DNS と設定を照合します。', 'The result changes with the DNS server. Check the intended server and configuration.'),
+      opt("ローカルキャッシュの更新不足を疑い、flushdns 後の変化を確認する。", "Suspect an unrefreshed local cache and check what changes after flushdns.", '今回比較した nslookup は DNS への直接照会です。問い合わせ先の差が根拠です。', 'These nslookup commands query DNS directly. The evidence is a difference between servers.')
     ],
     'inspect-dns-cache': [
-      opt('DNS サーバー側に旧アドレス 10.20.0.99 が残っている。', 'The DNS server still holds the old address 10.20.0.99.', '直接照会の回答は 10.20.0.20 です。旧値はローカル表示にあります。', 'The direct answer is 10.20.0.20. The old value appears in the local cache.'),
-      opt('PC のキャッシュに旧アドレスが残っている可能性がある。', 'The PC’s cache may retain an outdated address.', 'displaydns の .99 と nslookup の .20 が異なり、ローカルの古い情報を疑えます。', 'displaydns shows .99 while nslookup shows .20, suggesting stale local information.'),
-      opt('nslookup を実行したので、PC のキャッシュも新しい値になった。', 'Running nslookup has updated the PC’s cache to the new value.', 'nslookup の直接照会は、表示された古いリゾルバーキャッシュの更新を意味しません。', 'A direct nslookup query does not establish that the stale resolver cache was refreshed.')
+      opt("DNS の旧レコードを原因と読み、サーバー側の登録を調べる。", "Attribute the issue to an old DNS record and inspect the server’s registration.", '直接照会の回答は 10.20.0.20 です。旧値はローカル表示にあります。', 'The direct answer is 10.20.0.20. The old value appears in the local cache.'),
+      opt("直接照会とローカル表示を比較し、PC のキャッシュに旧値が残ると読む。", "Read the difference between the direct query and local display as evidence of a stale PC cache.", 'displaydns の .99 と nslookup の .20 が異なり、ローカルの古い情報を疑えます。', 'displaydns shows .99 while nslookup shows .20, suggesting stale local information.'),
+      opt("nslookup が正常に返ったため、キャッシュの更新も完了と読む。", "Read a successful nslookup answer as completion of the local cache refresh too.", 'nslookup の直接照会は、表示された古いリゾルバーキャッシュの更新を意味しません。', 'A direct nslookup query does not establish that the stale resolver cache was refreshed.')
     ],
     'trace-a-route': [
-      opt('* の行の機器で、後続への転送が停止したと判断する。', 'Conclude that the device at * stopped forwarding traffic.', '* はその試行への応答なしです。後続に応答があれば転送は続いている場合があります。', '* means no probe response. Later replies may show that forwarding continued.'),
-      opt('応答制限も考慮し、後続ホップと最終宛先も確認する。', 'Consider response limits and inspect later hops and the destination.', '途中の応答制限と宛先への到達性を分けて読む判断です。', 'This separates intermediate response limits from destination reachability.'),
-      opt('* を名前解決の失敗と読み、DNS 設定を見直す。', 'Read * as a name-resolution failure and review DNS settings.', 'ホップの * はそのプローブのタイムアウトです。DNS の失敗表示とは異なります。', 'A hop’s * is a probe timeout, not a DNS-failure indicator.')
+      opt("応答のない機器で転送が止まった。そこの障害ログを調べる。", "Forwarding stopped at the unresponsive device; inspect its fault logs.", '* はその試行への応答なしです。後続に応答があれば転送は続いている場合があります。', '* means no probe response. Later replies may show that forwarding continued.'),
+      opt("* は応答制限の可能性もあると読み、後続ホップと最終宛先の結果を確認する。", "Read * as possibly reflecting response limits, then examine later hops and the destination.", '途中の応答制限と宛先への到達性を分けて読む判断です。', 'This separates intermediate response limits from destination reachability.'),
+      opt("* は名前解決の失敗と読み、DNS の設定を確認する。", "Read * as a name-resolution failure and check DNS configuration.", 'ホップの * はそのプローブのタイムアウトです。DNS の失敗表示とは異なります。', 'A hop’s * is a probe timeout, not a DNS-failure indicator.')
     ],
     'routing-table': [
-      opt('DC 宛ての /32 経路が、ポータルの .20 も含むと読む。', 'Read the DC’s /32 route as also covering the portal at .20.', '/32 は特定の一つの IP です。10.20.0.10 の経路は .20 を含みません。', '/32 covers one IP. A route to 10.20.0.10 does not cover .20.'),
-      opt('社内サブネットに必要な経路と VPN の配布設定を照合する。', 'Compare the required internal-subnet route with the VPN configuration.', 'VPN は接続中でも、ポータルを含む社内経路が欠けています。', 'The VPN is connected, but the route covering the portal is missing.'),
-      opt('デフォルト経路があるので、社内宛ても VPN を通ると読む。', 'Assume internal traffic uses the VPN because a default route exists.', '表示のデフォルト経路は自宅側です。存在するだけで VPN 経由とは言えません。', 'The displayed default route uses the home connection; its presence does not imply a VPN path.')
+      opt("DC 宛て /32 がポータルも含むと読み、Web サービス側を調べる。", "Assume the DC’s /32 route also covers the portal and investigate the web service.", '/32 は特定の一つの IP です。10.20.0.10 の経路は .20 を含みません。', '/32 covers one IP. A route to 10.20.0.10 does not cover .20.'),
+      opt("VPN の接続とは別に、ポータル向けの配布経路を調べる。", "Inspect the distributed route to the portal separately from VPN connection status.", 'VPN は接続中でも、ポータルを含む社内経路が欠けています。', 'The VPN is connected, but the route covering the portal is missing.'),
+      opt("デフォルト経路で社内宛ても VPN を通ると読み、ポータルのログを調べる。", "Assume the default route sends internal traffic through the VPN and inspect the portal’s logs.", '表示のデフォルト経路は自宅側です。存在するだけで VPN 経由とは言えません。', 'The displayed default route uses the home connection; its presence does not imply a VPN path.')
     ],
     'arp-neighbors': [
       opt('経路上の遠隔サーバーの MAC アドレスを順に記録した一覧。', 'A sequence of remote-server MAC addresses along the route.', '遠隔宛てでは通常、ローカルの次ホップの MAC を使います。', 'Remote traffic normally uses the MAC address of a local next hop.'),
@@ -92,98 +92,98 @@
       opt('現在アプリで接続中のサーバーだけを記録した一覧。', 'A list limited to servers with active application connections.', 'ARP キャッシュはアプリ接続の一覧ではありません。接続状態には netstat などを使います。', 'The ARP cache is not an application-connection list; inspect connections separately.')
     ],
     'path-loss': [
-      opt('途中の応答損失を、その機器での転送損失と同一視する。', 'Treat missing intermediate responses as identical to forwarding loss.', 'プローブへの応答は制限され得ます。転送損失と同じとは限りません。', 'Probe responses may be limited without equivalent forwarding loss.'),
-      opt('ICMP 応答制限を考慮し、宛先の損失と実症状を比較する。', 'Consider ICMP limits and compare destination loss with actual symptoms.', '途中の応答と最終宛先までの結果を合わせると、断定を避けて切り分けられます。', 'Combining intermediate and destination results supports a more reliable diagnosis.'),
+      opt("途中の機器で転送損失が起きたと読み、その機器のエラーを調べる。", "Read the missing replies as forwarding loss at that device and inspect its errors.", 'プローブへの応答は制限され得ます。転送損失と同じとは限りません。', 'Probe responses may be limited without equivalent forwarding loss.'),
+      opt("途中の応答が制限された可能性もある。宛先の損失と利用者の症状を比較する。", "Intermediate replies may be limited; compare destination loss with the user’s symptoms.", '途中の応答と最終宛先までの結果を合わせると、断定を避けて切り分けられます。', 'Combining intermediate and destination results supports a more reliable diagnosis.'),
       opt('宛先に応答があるので、業務アプリの遅さは確認対象から外す。', 'Exclude application slowness because the destination replied.', 'ICMP の応答は業務処理の時間を測定していません。実症状の確認も必要です。', 'An ICMP reply does not measure application response time. Check the actual symptom too.')
     ],
     'connections-and-pid': [
       opt('HTTP 要求に成功応答が返り、ページ取得が完了している。', 'The HTTP request succeeded and page retrieval is complete.', 'ESTABLISHED は TCP の状態です。HTTP の結果は表示していません。', 'ESTABLISHED is a TCP state; it does not report the HTTP result.'),
-      opt('その TCP 接続が成立している。アプリの結果は別に確認する。', 'A TCP connection exists; the application result is untested.', '接続の成立と、必要な内容や業務処理の成功は別です。', 'A connection being established is separate from correct content or a successful workflow.'),
+      opt("TCP 接続は成立したが、HTTP や業務処理の成功までは分からない。", "TCP is established, but that does not establish HTTP or workflow success.", '接続の成立と、必要な内容や業務処理の成功は別です。', 'A connection being established is separate from correct content or a successful workflow.'),
       opt('そのローカルポートは、これから来る接続を待ち受けている。', 'The local port is waiting for a new incoming connection.', '待ち受けの表示は LISTENING です。ESTABLISHED と区別します。', 'A listening socket is shown as LISTENING, not ESTABLISHED.')
     ],
     'winhttp-proxy': [
-      opt('WinHTTP の表示を、curl が使用中のプロキシと読み替える。', 'Treat the WinHTTP result as the proxy currently used by curl.', 'curl が同じ設定を使うとは限りません。対象クライアントの設定を確認します。', 'curl may use different configuration. Check the actual client’s settings.'),
-      opt('WinHTTP を使うクライアントと社内の想定設定を照合する。', 'Compare this WinHTTP client with the intended proxy settings.', 'この業務同期クライアントは WinHTTP を使用します。表示はその調査に対応します。', 'This sync client uses WinHTTP, so these settings are relevant to its investigation.'),
-      opt('ブラウザーで開けた結果を使い、WinHTTP の設定も正常とする。', 'Use browser success to conclude that WinHTTP is configured correctly.', 'ブラウザーと WinHTTP クライアントでは、参照する設定が異なる場合があります。', 'The browser and WinHTTP client may use different proxy settings.')
+      opt("WinHTTP の値を curl の設定として扱い、その設定ファイルを調べる。", "Treat the WinHTTP value as curl’s configuration and inspect curl’s configuration file.", 'curl が同じ設定を使うとは限りません。対象クライアントの設定を確認します。', 'curl may use different configuration. Check the actual client’s settings.'),
+      opt("この業務クライアントの WinHTTP 設定を、社内の想定設定と照合する。", "Compare this business client’s WinHTTP settings with the intended configuration.", 'この業務同期クライアントは WinHTTP を使用します。表示はその調査に対応します。', 'This sync client uses WinHTTP, so these settings are relevant to its investigation.'),
+      opt("ブラウザーで開けるため WinHTTP も正常と読み、同期データの形式を調べる。", "Infer correct WinHTTP configuration from browser success and inspect the sync data format.", 'ブラウザーと WinHTTP クライアントでは、参照する設定が異なる場合があります。', 'The browser and WinHTTP client may use different proxy settings.')
     ],
     'firewall-profile': [
       opt('対象通信がこのファイアウォールで遮断されたことが分かる。', 'The result shows that this firewall blocked the connection in question.', 'ON は有効状態です。特定通信の遮断を示す記録ではありません。', 'ON means enabled; it is not a record of a particular blocked connection.'),
-      opt('プロファイルは有効。対象通信のルールや結果は別途調べる。', 'The profile is enabled; check the relevant connection rules.', '全体状態と個別通信の判定を分けて読む必要があります。', 'Separate the overall profile state from a verdict for one connection.'),
+      opt("ON は有効状態であり、個別通信の許可・遮断の結果とは別。", "ON means enabled, while individual connection permissions are separate.", '全体状態と個別通信の判定を分けて読む必要があります。', 'Separate the overall profile state from a verdict for one connection.'),
       opt('Domain プロファイルなので、社内宛ての通信は許可済みと分かる。', 'A Domain profile shows that traffic to internal destinations is permitted.', 'プロファイル名だけでは、対象アプリやポートの許可を判断できません。', 'The profile name alone does not establish permission for an app or port.')
     ],
     'curl-detailed-request': [
-      opt('標準エラー出力に出た詳細情報を、TLS 失敗の根拠とする。', 'Treat verbose output on standard error as evidence of a TLS failure.', '成功した要求の診断も標準エラー出力に書かれます。結果を合わせて読みます。', 'Diagnostics for successful requests also use standard error. Read the actual results.'),
-      opt('詳細表示は成功時にも出るため、終了結果と HTTP 応答を照合する。', 'Compare the diagnostics with the exit result and HTTP response.', 'この演習では本文も得ています。出力先の名称だけでは失敗と判断しません。', 'This exercise also receives a body. The stream’s name alone does not indicate failure.'),
-      opt('送信した要求ヘッダーを、サーバーが返した応答として読む。', 'Read the outgoing request headers as the server’s response headers.', '詳細表示には送信と受信の両方があります。要求と応答を区別します。', 'Verbose output includes both directions. Distinguish the request from the response.')
+      opt("標準エラー出力があるため TLS 失敗と読み、証明書を調べる。", "Read the presence of stderr output as a TLS failure and investigate the certificate.", '成功した要求の診断も標準エラー出力に書かれます。結果を合わせて読みます。', 'Diagnostics for successful requests also use standard error. Read the actual results.'),
+      opt("詳細表示は成功時にも出るため、要求と応答、終了結果を照合して読む。", "Successful requests also produce verbose output, so read the request, response, and exit result together.", 'この演習では本文も得ています。出力先の名称だけでは失敗と判断しません。', 'This exercise also receives a body. The stream’s name alone does not indicate failure.'),
+      opt("送信ヘッダーを応答ヘッダーとして扱い、サーバーの返却内容を確認する。", "Treat outgoing headers as response headers and use them to check what the server returned.", '詳細表示には送信と受信の両方があります。要求と応答を区別します。', 'Verbose output includes both directions. Distinguish the request from the response.')
     ],
     'domain-user-and-groups': [
-      opt('AD の最新所属を毎回直接照会した結果として扱う。', 'Treat this as a fresh direct query of the latest AD membership.', 'whoami /groups は現在のログオン情報です。AD の変更が未反映の場合があります。', 'whoami /groups describes the current logon; recent AD changes may not be reflected.'),
-      opt('現在のログオン情報として、対象の権限と合わせて確認する。', 'Compare the current logon information with permissions on the target.', '所属と対象側の許可・拒否などを照合して、アクセスを調べます。', 'Investigate access by comparing membership with the target’s allow and deny entries.'),
-      opt('Domain Users の表示を、対象共有への変更権限として扱う。', 'Treat Domain Users membership as Modify permission on the share.', 'グループ名だけでは共有や NTFS の権限は分かりません。', 'A group name alone does not establish share or NTFS permissions.')
+      opt("AD へ直接照会した最新の所属情報と読み、変更反映済みとして扱う。", "Treat this as a fresh AD membership query and assume membership changes have been reflected.", 'whoami /groups は現在のログオン情報です。AD の変更が未反映の場合があります。', 'whoami /groups describes the current logon; recent AD changes may not be reflected.'),
+      opt("現在のログオン情報と読み、対象側の許可・拒否と照合する。", "Read this as current logon information and compare it with the target’s allow and deny entries.", '所属と対象側の許可・拒否などを照合して、アクセスを調べます。', 'Investigate access by comparing membership with the target’s allow and deny entries.'),
+      opt("Domain Users に属するため共有の変更は許可済みと読み、NTFS 権限だけを確認する。", "Infer share Modify permission from Domain Users membership and check only NTFS permissions.", 'グループ名だけでは共有や NTFS の権限は分かりません。', 'A group name alone does not establish share or NTFS permissions.')
     ],
     'group-policy-results': [
-      opt('CORP-Desktop があるので、ドライブ割り当ても適用済みと読む。', 'Infer that drive mapping is applied because CORP-Desktop is listed.', 'CORP-Desktop と CORP-Drive-Map は別のポリシーです。後者は一覧にありません。', 'CORP-Desktop and CORP-Drive-Map are different policies. The latter is absent.'),
-      opt('想定 GPO の不在を確認し、DC 接続と更新後の結果を調べる。', 'Note the missing expected GPO, then check DC access and the post-refresh result.', '今回必要な CORP-Drive-Map が適用一覧にないため、配布と適用を調べます。', 'CORP-Drive-Map is missing from the applied list, so investigate delivery and application.'),
-      opt('gpresult の表示成功を、直前のポリシー更新成功として扱う。', 'Treat successful gpresult output as a successful policy refresh just performed.', 'gpresult は記録済みの結果の照会です。更新を実行するコマンドではありません。', 'gpresult queries recorded results; it does not perform a policy refresh.')
+      opt("CORP-Desktop がドライブも割り当てる前提で、共有先の権限を調べる。", "Assume CORP-Desktop also maps the drive and investigate permissions on the share.", 'CORP-Desktop と CORP-Drive-Map は別のポリシーです。後者は一覧にありません。', 'CORP-Desktop and CORP-Drive-Map are different policies. The latter is absent.'),
+      opt("必要な GPO がないため、DC 接続と更新後の適用結果を確認する。", "The required GPO is absent, so check DC access and post-refresh results.", '今回必要な CORP-Drive-Map が適用一覧にないため、配布と適用を調べます。', 'CORP-Drive-Map is missing from the applied list, so investigate delivery and application.'),
+      opt("gpresult で更新も完了した前提で、共有サーバーの障害を調べる。", "Assume gpresult also completed a policy refresh and investigate a share-server fault.", 'gpresult は記録済みの結果の照会です。更新を実行するコマンドではありません。', 'gpresult queries recorded results; it does not perform a policy refresh.')
     ],
     'time-synchronization': [
-      opt('Last Successful Sync Time を、今この瞬間の PC 時刻として読む。', 'Read Last Successful Sync Time as the PC’s current clock time.', 'その欄は同期に成功した時点の記録です。現在時刻とは別です。', 'That field records when synchronization succeeded, not the current clock time.'),
-      opt('記録された時刻の同期成功が分かる。現在の差は別に測定する。', 'It records a past sync; measure the current offset separately.', '同期履歴と、現在の時刻差の実測を分けた解釈です。', 'This distinguishes synchronization history from a current offset measurement.'),
-      opt('Source が DC なので、現在の時刻差はゼロと判断する。', 'Infer zero current offset because Source is a domain controller.', '同期先の名前は、現在の差の測定値ではありません。', 'The time source’s name is not a measurement of current offset.')
+      opt("最終同期時刻を現在の時計と読み、他 PC の現在時刻と比較する。", "Read the last sync timestamp as the current clock and compare it with another PC’s current time.", 'その欄は同期に成功した時点の記録です。現在時刻とは別です。', 'That field records when synchronization succeeded, not the current clock time.'),
+      opt("記録時点の同期成功は分かるが、現在の時刻差は別に測って比較する。", "A successful sync was recorded, but the current offset needs a separate measurement and comparison.", '同期履歴と、現在の時刻差の実測を分けた解釈です。', 'This distinguishes synchronization history from a current offset measurement.'),
+      opt("同期先が DC のため、現在の時刻差はゼロと読む。", "Read a DC time source as evidence of zero current offset.", '同期先の名前は、現在の差の測定値ではありません。', 'The time source’s name is not a measurement of current offset.')
     ],
     'share-server-diagnosis': [
       opt('ping 成功を SMB 接続成功として扱い、ファイル自体だけを調べる。', 'Treat ping success as SMB success and investigate only the file itself.', 'ping が確認したのは ICMP です。SMB の接続や認証は未確認です。', 'Ping tested ICMP. SMB connectivity and authentication remain untested.'),
-      opt('正確なエラーを確認し、共有サービス・資格情報・権限を調べる。', 'Inspect the exact error, sharing service, credentials, and permissions.', '割り当て・DNS・ICMP までを確認したので、共有アクセスの条件を調べます。', 'Mapping, DNS, and ICMP were checked; next investigate the conditions for share access.'),
-      opt('名前解決が成功したので、共有への認証も完了済みと判断する。', 'Infer that share authentication completed because name resolution succeeded.', 'DNS の回答はサーバーのアドレスです。共有への認証結果ではありません。', 'A DNS answer supplies an address, not a share-authentication result.')
+      opt("正確なエラーと共有サービス・資格情報・権限を調べる。", "Inspect the exact error, sharing service, credentials, and permissions.", '割り当て・DNS・ICMP までを確認したので、共有アクセスの条件を調べます。', 'Mapping, DNS, and ICMP were checked; next investigate the conditions for share access.'),
+      opt("DNS の回答を共有認証の成功と読み、ファイル破損の有無を確認する。", "Read a DNS answer as successful share authentication and check for file corruption.", 'DNS の回答はサーバーのアドレスです。共有への認証結果ではありません。', 'A DNS answer supplies an address, not a share-authentication result.')
     ],
     'renew-dhcp-lease': [
-      opt('アドレスが変わらないため、リース更新は失敗したと読む。', 'Read the unchanged address as a failed lease renewal.', 'DHCP は同じアドレスのリースを更新できます。更新結果も確認します。', 'DHCP can renew a lease for the same address. Read the renewal result too.'),
-      opt('同じアドレスでの更新もあるため、結果と更新後の設定を読む。', 'An unchanged address can be renewed; recheck the settings.', 'アドレス変更は成功の条件ではありません。元の症状も別途確認します。', 'An address change is not required for success. Retest the original symptom separately.'),
-      opt('アドレスが同じなので、静的 IP の接続だと判断する。', 'Infer a static IP configuration because the address is unchanged.', '更新前の DHCP Enabled は Yes です。同じ番号でも DHCP の接続です。', 'DHCP Enabled was Yes. An unchanged address can still be DHCP-configured.')
+      opt("リースの更新に失敗した。DHCP サーバー側のログ確認を依頼する。", "The lease renewal failed; request a check of the DHCP server logs.", 'DHCP は同じアドレスのリースを更新できます。更新結果も確認します。', 'DHCP can renew a lease for the same address. Read the renewal result too.'),
+      opt("同じアドレスでもリースを更新できるため、更新結果と更新後の設定を読む。", "A lease can be renewed for the same address, so read the renewal result and resulting settings.", 'アドレス変更は成功の条件ではありません。元の症状も別途確認します。', 'An address change is not required for success. Retest the original symptom separately.'),
+      opt("静的 IP 設定と判断し、管理台帳の固定アドレスを確認する。", "Infer a static IP configuration and check its assigned address in the inventory.", '更新前の DHCP Enabled は Yes です。同じ番号でも DHCP の接続です。', 'DHCP Enabled was Yes. An unchanged address can still be DHCP-configured.')
     ],
     'refresh-dns-cache': [
       opt('DNS サーバー側のレコードを .99 から .20 へ変更した。', 'Changed the DNS server’s record from .99 to .20.', 'flushdns が変更するのは PC のキャッシュです。サーバーの回答は既に .20 でした。', 'flushdns clears the PC’s cache. The server already answered .20.'),
-      opt('古いローカル情報を消去し、現在のアドレスから ICMP 応答を得た。', 'Cleared the local cache; the current IP replied to ICMP.', '消去後の ping は 10.20.0.20 に応答しています。Web の動作は別の確認です。', 'The post-flush ping replies from 10.20.0.20. Web behavior needs a separate check.'),
+      opt('古いローカル情報を消去し、現在のアドレスから ICMP 応答を得た。', 'Cleared the local cache and received ICMP replies from the current IP.', '消去後の ping は 10.20.0.20 に応答しています。Web の動作は別の確認です。', 'The post-flush ping replies from 10.20.0.20. Web behavior needs a separate check.'),
       opt('ポータルから HTTP の成功応答を取得した。', 'Received a successful HTTP response from the portal.', 'この課題の再確認は ping です。HTTP 要求はまだ送っていません。', 'This lesson rechecks with ping; it has not sent an HTTP request.')
     ],
     'start-print-service': [
-      opt('RUNNING を印刷ジョブの完了と読み、復旧を報告する。', 'Read RUNNING as completion of a print job and report recovery.', 'RUNNING はサービス状態です。印刷ジョブの完了記録ではありません。', 'RUNNING is a service state, not a record of a completed print job.'),
-      opt('元の印刷操作を再試行し、必要なら再発やログも確認する。', 'Retest the original print action and check recurrence or logs as needed.', 'サービス開始後に、利用者が必要な機能まで確認する手順です。', 'After service startup, verify the function the user actually needs.'),
-      opt('RUNNING を自動起動への設定変更と読み、設定完了と報告する。', 'Read RUNNING as a change to automatic startup and report configuration complete.', 'query の STATE と起動方法の設定は別です。net start は今回の開始操作です。', 'STATE differs from startup configuration. net start starts the service now.')
+      opt("印刷完了と判断し、利用者へ対応終了を連絡する。", "Infer completed printing and tell the user that the incident is resolved.", 'RUNNING はサービス状態です。印刷ジョブの完了記録ではありません。', 'RUNNING is a service state, not a record of a completed print job.'),
+      opt("サービス開始後の印刷操作を再試行して結果を確認する。", "Retry printing and check its result after the service has started.", 'サービス開始後に、利用者が必要な機能まで確認する手順です。', 'After service startup, verify the function the user actually needs.'),
+      opt("自動起動への変更が済んだとして、設定変更の完了を報告する。", "Assume automatic startup was configured and report the configuration change as complete.", 'query の STATE と起動方法の設定は別です。net start は今回の開始操作です。', 'STATE differs from startup configuration. net start starts the service now.')
     ],
     'refresh-group-policy': [
-      opt('gpupdate 成功を、対象の設定が利用者に見えている証拠とする。', 'Treat gpupdate success as proof the setting is visible to the user.', '更新の成功と実際の反映は別です。gpresult と対象設定を確認します。', 'A successful refresh differs from visible application. Check gpresult and the target setting.'),
-      opt('対象 GPO と実際の設定を照合し、必要な再ログオン等も確認する。', 'Compare the target GPO and actual setting, including any required sign-in cycle.', 'この演習では適用一覧と Z: の反映を確認します。実機では追加条件にも従います。', 'This task checks the applied list and Z: mapping. Real systems may have further requirements.'),
-      opt('ドライブの割り当て表示を、共有ファイルへの書き込み成功と扱う。', 'Treat the drive mapping as a successful write to a shared file.', '割り当ての反映は確認できますが、ファイルへの書き込みは試していません。', 'The mapping is visible, but no file write has been tested.')
+      opt("更新メッセージだけを根拠に、利用者の設定も反映済みと読む。", "Read the refresh message alone as evidence that the user’s setting has been applied.", '更新の成功と実際の反映は別です。gpresult と対象設定を確認します。', 'A successful refresh differs from visible application. Check gpresult and the target setting.'),
+      opt("対象 GPO と割り当て、再ログオンの要否を照合する。", "Compare the target GPO, mapping, and any required new sign-in.", 'この演習では適用一覧と Z: の反映を確認します。実機では追加条件にも従います。', 'This task checks the applied list and Z: mapping. Real systems may have further requirements.'),
+      opt("割り当て表示を根拠に、共有への書き込み成功まで報告する。", "Use the mapping display to report successful writing to the share too.", '割り当ての反映は確認できますが、ファイルへの書き込みは試していません。', 'The mapping is visible, but no file write has been tested.')
     ],
     'system-file-verification': [
       opt('整合性の問題が見つかり、この実行で修復も完了した。', 'Integrity problems were found and repaired by this command.', '/verifyonly は検証のみです。修復操作を実行したことにはなりません。', '/verifyonly verifies only; it does not perform repair.'),
-      opt('整合性の問題を検出した。詳細ログと修復計画を確認する。', 'Integrity problems were detected; review detailed logs and a repair plan.', 'found integrity violations は検出結果です。次の対応の根拠として記録します。', 'found integrity violations is a detection result to record for the next step.'),
+      opt("整合性違反の検出であり、修復完了ではないと読む。", "Read this as detection of integrity violations, not completion of a repair.", 'found integrity violations は検出結果です。次の対応の根拠として記録します。', 'found integrity violations is a detection result to record for the next step.'),
       opt('整合性の問題が見つかり、元の障害の原因も特定できた。', 'Integrity problems were detected, establishing the original fault’s cause.', '検出と元の症状の因果関係は別の確認です。出力だけで原因は確定しません。', 'Detection alone does not establish a causal link to the original symptom.')
     ],
     'windows-image-health': [
       opt('この実行で新しく詳細スキャンを完了した。', 'This command completed a fresh detailed scan.', '/CheckHealth は記録済み状態の確認です。新しいスキャンは /ScanHealth です。', '/CheckHealth checks recorded status; /ScanHealth performs a fresh scan.'),
-      opt('記録された破損状態を確認した。スキャンや修復は別の操作。', 'Recorded corruption was checked, without a scan or repair.', 'repairable は修復可能という状態です。修復を完了したという意味ではありません。', 'repairable describes a state that can be repaired, not a completed repair.'),
+      opt("記録済みの状態を参照した結果であり、新規スキャンや修復とは別。", "This is a check of recorded status, separate from a fresh scan or repair.", 'repairable は修復可能という状態です。修復を完了したという意味ではありません。', 'repairable describes a state that can be repaired, not a completed repair.'),
       opt('repairable の表示を、修復が完了した結果として読む。', 'Read repairable as the result of a completed repair.', '修復を試みるオプションは /RestoreHealth です。今回は指定していません。', '/RestoreHealth attempts repair; it was not used here.')
     ],
     'capstone-stale-portal': [
       opt('社内 DNS の登録を変更し、ポータルの名前解決を修復した。', 'Changed the company DNS record and repaired portal name resolution.', '変更したのは PC のキャッシュです。DNS サーバーのレコードは編集していません。', 'Only the PC’s cache was changed. The DNS server record was not edited.'),
-      opt('PC の古いキャッシュを更新後、ポータルの HEAD 要求で 200 を確認した。', 'After refreshing the PC’s stale cache, a portal HEAD request returned 200.', '記録は旧キャッシュ・DNS 回答・更新後の HTTP 応答を示しています。', 'The report records the old cache, DNS answer, and post-refresh HTTP response.'),
+      opt("キャッシュ更新後の HEAD 応答は 200。", "The HEAD response after refreshing the cache was 200.", '記録は旧キャッシュ・DNS 回答・更新後の HTTP 応答を示しています。', 'The report records the old cache, DNS answer, and post-refresh HTTP response.'),
       opt('ポータルの本文を取得し、ログイン後の処理まで確認した。', 'Retrieved the portal body and verified the workflow after sign-in.', '-I は HEAD 要求です。本文やログイン後の処理は今回の確認対象に含まれません。', '-I sends HEAD. This check did not retrieve a body or test a signed-in workflow.')
     ],
     'capstone-printing': [
       opt('サービスの再照会で、印刷ジョブの正常終了を確認した。', 'The second service query confirmed a print job completed successfully.', '再照会が示すのはサービスの状態で、印刷ジョブの結果ではありません。', 'The second query reports service state, not a print-job result.'),
-      opt('Spooler は停止から RUNNING に変化。元の印刷操作を次に確認する。', 'Spooler is now RUNNING; the original print action is untested.', '変更前後の状態は保存済みです。実物への印刷は未確認として報告します。', 'Before/after states are recorded. Report physical printing as still untested.'),
+      opt("Spooler は開始済みだが、印刷操作はまだ未実施。", "Spooler has started, but printing has not yet been tried.", '変更前後の状態は保存済みです。実物への印刷は未確認として報告します。', 'Before/after states are recorded. Report physical printing as still untested.'),
       opt('Spooler の起動方法を自動に変更し、設定の反映を確認した。', 'Changed Spooler to automatic startup and verified the configuration.', 'net start はサービス開始です。起動方法を変更する操作は行っていません。', 'net start starts the service; no startup-mode change was performed.')
     ],
     'capstone-http-503': [
       opt('curl が正常終了したため、ポータルを利用可能と報告する。', 'Report the portal as available because curl exited successfully.', '通常の curl は 503 を受信しても終了コード 0 になり得ます。HTTP 状態も読みます。', 'curl can exit with code 0 after receiving 503. Inspect the HTTP status too.'),
-      opt('DNS と ICMP は応答、HTTP は 503 と記録し、Web 側を調べる。', 'Record the 503 alongside DNS and ping, then check the web path.', '層ごとの結果がそろっています。503 の発生元は Web 側の追加調査が必要です。', 'The layers show different results. Investigate the source of the 503 along the web path.'),
-      opt('名前解決の失敗として、DNS の回答修正を依頼する。', 'Report a name-resolution failure and request a DNS-record correction.', 'nslookup は .20 を回答し、HTTP 応答も届いています。DNS 失敗という証拠ではありません。', 'nslookup returned .20 and an HTTP response arrived. This is not evidence of DNS failure.')
+      opt("DNS と ICMP の応答、HTTP 503 を根拠に、Web 側の運用担当へ調査を引き継ぐ。", "Hand the investigation to web operations with the DNS and ICMP replies and the HTTP 503 as evidence.", '層ごとの結果がそろっています。503 の発生元は Web 側の追加調査が必要です。', 'The layers show different results. Investigate the source of the 503 along the web path.'),
+      opt("名前解決の失敗として、DNS サーバーの設定確認を依頼する。", "Treat this as a name-resolution failure and request a DNS-server configuration check.", 'nslookup は .20 を回答し、HTTP 応答も届いています。DNS 失敗という証拠ではありません。', 'nslookup returned .20 and an HTTP response arrived. This is not evidence of DNS failure.')
     ],
     'capstone-vpn-route': [
       opt('DC が見つかったため、ポータルへの VPN 経路も確認済み。', 'DC discovery also verifies the VPN route to the portal.', 'DC の /32 経路は .10 だけです。ポータルの .20 は含みません。', 'The DC’s /32 route covers .10 only, not the portal at .20.'),
-      opt('DNS と DC 検出は成功。社内経路の不足を記録し、想定設定と照合する。', 'DNS and DC discovery work; verify the missing internal route.', '回答の .20 に対する社内経路が不足しています。修復は未実施として引き継ぎます。', 'The route covering the returned .20 address is missing. Hand off with repair still pending.'),
+      opt('DNS と DC 検出の成功と社内経路の不足を記録し、想定設定と照合する。', 'Record successful DNS and DC discovery alongside the missing internal route and compare the intended settings.', '回答の .20 に対する社内経路が不足しています。修復は未実施として引き継ぎます。', 'The route covering the returned .20 address is missing. Hand off with repair still pending.'),
       opt('ポータルが開かないため、VPN の社内 DNS が応答していない。', 'The internal VPN DNS server is not responding because the portal will not open.', 'nslookup は社内 DNS から .20 の回答を得ています。名前解決は確認済みです。', 'nslookup received the .20 answer from internal DNS. Name resolution was verified.')
     ]
   };
@@ -213,7 +213,7 @@
     lesson({
       id: 'help-first', track: 'basics', title: t('01 · 入り口は help', '01 · Start with help'),
       goal: t('画面、シェル、コマンドの違いを知り、使い方を調べる。', 'Distinguish a terminal, a shell, and a command, then look up help.'),
-      explanation: [t('Windows Terminal は文字を入出力するためのアプリです。その中で動くコマンドプロンプト（CMD）と PowerShell は別のシェルです。この room は CMD を想定した練習用シミュレーターです。', 'Windows Terminal is an app that hosts text-based sessions. Command Prompt (CMD) and PowerShell are different shells that can run inside it. This room simulates a small, CMD-oriented environment.'), t('コマンドは「名前 + 引数」で指示します。help は利用できる操作の案内です。ここでの実行は架空の PC 内だけで完結し、実際の PC やインターネットにはアクセスしません。', 'A command is a name followed by arguments. help lists available commands. Everything here runs in a fictional PC; it never accesses your computer or the internet.')],
+      explanation: [t('Windows Terminal は文字を入出力するためのアプリです。その中で動くコマンドプロンプト（CMD）と PowerShell は別のシェルです。この room は CMD を想定した練習用シミュレーターです。', 'Windows Terminal is an app that hosts text-based sessions. Command Prompt (CMD) and PowerShell are different shells that can run inside it. This room simulates a small, CMD-oriented environment.'), t('コマンドは「名前 + 引数」で指示します。help は利用できる操作の案内です。ここでの実行は架空の PC 内だけで完結し、実際の PC やインターネットにはアクセスしません。', 'A command is a name followed by arguments. help lists available commands. Everything here runs in a fictional PC; it never accesses your computer or the internet.'), t('模擬 PC のコマンド出力や日時は英語版 Windows をもとにしています。実機の日本語版 Windows では、メッセージや日時の表記が異なります。この教材の help 案内は表示言語に対応します。', 'Command output and dates on the simulated PC follow English-language Windows. Japanese-language Windows uses different message and date formats. This room’s help descriptions follow the selected UI language.')],
       task: t('help を表示し、続いて dir の使い方を確認してください。', 'Show help, then look up how to use dir.'),
       example: { command: 'help', note: t('名前を続けると、そのコマンドの案内を開けます。', 'Add a command name to open its help.') },
       hints: [t('まず help だけを入力します。', 'Start by entering help on its own.'), t('フォルダー一覧のコマンド名は dir です。', 'The directory-listing command is dir.'), t('2 行目は help dir です。', 'The second line is help dir.')],
@@ -223,7 +223,7 @@
     lesson({
       id: 'current-directory', track: 'basics', title: t('02 · 今いる場所を確かめる', '02 · Know where you are'),
       goal: t('現在のフォルダーを確認し、C:\\Lab に移動する。', 'Check the current folder and move to C:\\Lab.'),
-      explanation: [t('プロンプトの C:\\Users\\student> は現在地を表します。引数なしの cd でも現在のフォルダーを表示できます。', 'C:\\Users\\student> in the prompt shows your current location. Running cd without arguments also displays the current directory.'), t('C:\\Lab のようにドライブから書く指定は絶対パスです。cd /d はドライブも含めて移動します。', 'A path starting with a drive, such as C:\\Lab, is an absolute path. cd /d changes the drive as well as the directory.'), t('この教材では、日本語の課題やコマンド例のパス区切りを円記号（¥）、英語ではバックスラッシュで表示します。パスに入力した ¥・￥ も区切りとして受け付けるため、例のとおりに入力できます。echo の本文や検索文字列の円記号は変えません。', 'The separator is a backslash (\\), which may look like a yen sign in Japanese environments. As an input aid, this simulator also accepts typed yen signs ¥ and ￥ as path separators. Yen signs in echo text and search strings stay unchanged.')],
+      explanation: [t('プロンプトの C:\\Users\\student> は現在地を表します。引数なしの cd でも現在のフォルダーを表示できます。', 'C:\\Users\\student> in the prompt shows your current location. Running cd without arguments also displays the current directory.'), t('C:\\Lab のようにドライブから書く指定は絶対パスです。cd /d はドライブも含めて移動します。', 'A path starting with a drive, such as C:\\Lab, is an absolute path. cd /d changes the drive as well as the directory.'), t('日本語では課題・コマンド例・端末のバックスラッシュを円記号（¥）で表示し、英語ではバックスラッシュで表示します。表示言語を変えても入力内容や保存済みファイルは変わりません。パスに入力した ¥・￥ も区切りとして受け付けます。echo の本文や検索文字列の円記号はそのまま扱います。', 'Japanese UI displays backslashes as yen signs (¥) in lessons, examples, and the terminal; English UI displays backslashes (\\). Changing the display language does not change your input or saved files. This simulator also accepts typed ¥ and ￥ as path separators, while preserving yen signs in echo text and search strings.')],
       task: t('cd で現在地を表示してから、C:\\Lab に移動してください。', 'Display your location with cd, then move to C:\\Lab.'),
       example: { command: c`cd /d C:\Users\student\Documents`, note: t('この例は Documents へ移動します。課題では移動先を変えます。', 'This example opens Documents. Use the destination in the task instead.') },
       hints: [t('cd だけなら、場所を変更せずに表示します。', 'cd on its own displays the location without moving.'), t('移動先は C:\\Lab です。', 'Your destination is C:\\Lab.'), t('cd の後ろに /d と移動先を書きます。', 'Follow cd with /d and the destination.')],
@@ -234,11 +234,11 @@
       id: 'drives-and-parent', track: 'basics', title: t('03 · ドライブと一つ上の階層', '03 · Drives and parent folders'),
       goal: t('別ドライブへ移動し、.. の意味を確かめる。', 'Switch drives and use .. to go up a folder.'),
       explanation: [t('Windows の C: や D: はドライブを表します。.. は「現在のフォルダーの一つ上」です。', 'C: and D: identify drives in Windows. .. means the parent of the current folder.'), t('cd /d D:\\Support なら、ドライブとフォルダーをまとめて切り替えられます。単に cd D:\\Support とする場合の動きとは違います。', 'cd /d D:\\Support switches both drive and folder. Without /d, a drive change behaves differently in CMD.')],
-      task: t('D:\\Support に移動して ticket.txt を読み、最後に一つ上の D:\\ へ移動してください。', 'Move to D:\\Support, read ticket.txt, then go up to D:\\.'),
+      task: t('D:\\Support に移動して ticket.txt を読み、最後に cd .. で一つ上の D:\\ へ移動してください。', 'Move to D:\\Support, read ticket.txt there, then use cd .. to go up to D:\\.'),
       example: { command: 'cd ..', note: t('一つ上に移動する短い書き方です。先に目的のフォルダーへ移動しましょう。', 'This moves up one level. First navigate to the folder in the task.') },
       hints: [t('別ドライブへの移動は cd /d を使います。', 'Use cd /d to switch to another drive.'), t('内容表示は type ticket.txt です。', 'Use type ticket.txt to read the file.'), t('D:\\Support で cd .. を実行すると D:\\ になります。', 'From D:\\Support, cd .. takes you to D:\\.')],
       solution: [c`cd /d D:\Support`, 'type ticket.txt', 'cd ..'], success: t('ドライブ、フォルダー、相対パスを組み合わせて操作できました。', 'You used a drive, a folder, and a relative path together.'),
-      verify: { commands: [check('type', [c`D:\Support\ticket.txt`])], cwd: 'D:\\' }
+      verify: { orderedCommands: [{ ...check('type', [c`D:\Support\ticket.txt`]), cwd: c`D:\Support` }, { name: 'cd', contains: ['..'], cwd: c`D:\Support`, paths: ['D:\\'] }], cwd: 'D:\\' }
     }),
     lesson({
       id: 'list-files', track: 'basics', title: t('04 · ファイルを一覧する', '04 · List files'),
@@ -295,11 +295,11 @@
     lesson({
       id: 'save-and-append', track: 'basics', title: t('09 · 結果をファイルに残す', '09 · Save and append output'),
       goal: t('> と >> の違いを使って、調査メモを作る。', 'Use > and >> to create a short investigation note.'),
-      explanation: [t('> は出力先のファイルを作成または上書きします。>> は末尾への追記です。画面に出る代わりにファイルへ保存されます。', '> creates or overwrites the output file. >> appends to its end. The output goes to the file instead of the screen.'), t('echo は指定した短い文字列を出力します。実際の CMD では、文字列と > の間の空白も行末に保存されます。この課題の解答は > の直前に空白を入れず、余分な空白を残さない書き方です。', 'echo outputs a short piece of text. In real CMD, a space between the text and > is also saved at the end of the line. The solution omits the space before > to avoid a trailing space.')],
+      explanation: [t('> は出力先のファイルを作成または上書きします。>> は末尾への追記です。画面に出る代わりにファイルへ保存されます。', '> creates or overwrites the output file. >> appends to its end. The output goes to the file instead of the screen.'), t('echo は指定した短い文字列を出力します。例では見やすさのため > の前後に空白を入れます。実際の CMD では文字列と > の間の空白も行末に保存されますが、この教材では末尾空白を簡略化しています。', 'echo outputs a short piece of text. The examples use spaces around > for readability. Real CMD also saves the space before > at the end of the line; this simulator simplifies trailing spaces.'), t('実機で echo 1>file のように数字を > に隣接させると、1 は本文ではなく標準出力の番号として解釈されます。空白を詰める書き方をすべての文字列へ一般化しないようにします。この出力先番号の構文も教材では簡略化しています。', 'In real CMD, the 1 in echo 1>file is interpreted as the standard-output stream number, not as text to print. Do not assume removing the space works for every string. This simulator also simplifies that stream-number syntax.')],
       task: t('Reports\\notes.txt に PC-014 を書き、次の行に Printer issue を追記して、type で確認してください。', 'Write PC-014 to C:\\Lab\\Reports\\notes.txt, append Printer issue on the next line, and verify it with type.'),
-      example: { command: c`echo Investigation started> C:\Lab\Reports\example.txt`, note: t('1 回目は >、内容を残したい 2 回目は >> です。この教材では echo の末尾空白を簡略化しており、空白を入れたときの実機との差は再現しません。', 'Use > first, then >> to preserve existing contents. This simulator simplifies trailing spaces in echo and does not reproduce that spacing difference from real CMD.') },
-      hints: [t('まず echo PC-014 の出力先を指定します。', 'First redirect the output of echo PC-014.'), t('2 回目に > を使うと、最初の行が失われます。', 'Using > for the second line would overwrite the first.'), t('echo Printer issue>> C:\\Lab\\Reports\\notes.txt の後、type で読みます。', 'Run echo Printer issue>> C:\\Lab\\Reports\\notes.txt, then read it with type.')],
-      solution: [c`echo PC-014> C:\Lab\Reports\notes.txt`, c`echo Printer issue>> C:\Lab\Reports\notes.txt`, c`type C:\Lab\Reports\notes.txt`], success: t('上書きと追記を使い分けて、2 行のメモを残せました。', 'You used overwrite and append to keep a two-line note.'),
+      example: { command: c`echo Investigation started > C:\Lab\Reports\example.txt`, note: t('1 回目は >、内容を残したい 2 回目は >> です。この教材では echo の末尾空白を簡略化しており、空白を入れたときの実機との差は再現しません。', 'Use > first, then >> to preserve existing contents. This simulator simplifies trailing spaces in echo and does not reproduce that spacing difference from real CMD.') },
+      hints: [t('まず echo PC-014 の出力先を指定します。', 'First redirect the output of echo PC-014.'), t('2 回目に > を使うと、最初の行が失われます。', 'Using > for the second line would overwrite the first.'), t('echo Printer issue >> C:\\Lab\\Reports\\notes.txt の後、type で読みます。', 'Run echo Printer issue >> C:\\Lab\\Reports\\notes.txt, then read it with type.')],
+      solution: [c`echo PC-014 > C:\Lab\Reports\notes.txt`, c`echo Printer issue >> C:\Lab\Reports\notes.txt`, c`type C:\Lab\Reports\notes.txt`], success: t('上書きと追記を使い分けて、2 行のメモを残せました。', 'You used overwrite and append to keep a two-line note.'),
       verify: { commands: [check('echo', ['PC-014']), check('echo', ['Printer issue']), check('type', [c`C:\Lab\Reports\notes.txt`])], files: [{ path: c`C:\Lab\Reports\notes.txt`, includes: ['PC-014', 'Printer issue'] }] }
     }),
     lesson({
@@ -330,7 +330,7 @@
       example: { command: 'systeminfo', note: t('画面に表示する代わりに、> で報告用に保存できます。', 'Use > to save the output for a report instead of displaying it.') },
       hints: [t('短いバージョン表示は ver です。', 'Use ver for the short version display.'), t('systeminfo の後ろに > と保存先を続けます。', 'Follow systeminfo with > and the destination.'), t('保存先は C:\\Lab\\Reports\\system.txt です。', 'The destination is C:\\Lab\\Reports\\system.txt.')],
       solution: ['ver', c`systeminfo > C:\Lab\Reports\system.txt`], success: t('報告に添えられる端末情報を保存できました。', 'You saved machine information that can accompany a support report.'),
-      verify: { commands: [check('ver'), check('systeminfo')], files: [{ path: c`C:\Lab\Reports\system.txt`, includes: ['PC-014'] }] }
+      verify: { commands: [check('ver'), { ...check('systeminfo'), outputPath: c`C:\Lab\Reports\system.txt` }], files: [{ path: c`C:\Lab\Reports\system.txt`, includes: ['Host Name:', 'OS Name:', 'PC-014'] }] }
     }),
     lesson({
       id: 'machine-and-user', track: 'pc', title: t('13 · どの PC・誰の操作か', '13 · Which PC, which user?'),
@@ -404,7 +404,7 @@
       example: { command: 'wevtutil qe System /c:3 /rd:true /f:text', note: t('この照会をファイルへ保存します。ログの消去操作は扱いません。', 'Save this query to a file. This lesson only reads events.') },
       hints: [t('必要なオプションは /c:3 /rd:true /f:text です。', 'Use /c:3 /rd:true /f:text.'), t('保存には > を使います。', 'Use > to save the output.'), t('保存先は C:\\Lab\\Reports\\events.txt です。', 'Save to C:\\Lab\\Reports\\events.txt.')],
       solution: [c`wevtutil qe System /c:3 /rd:true /f:text > C:\Lab\Reports\events.txt`], success: t('問い合わせの時間帯と照合できるイベント記録を残せました。', 'You saved event evidence that can be compared with the reported incident time.'),
-      session: { scenario: 'service-stopped' }, verify: { commands: [check('wevtutil', ['qe', 'System', '/c:3', '/rd:true', '/f:text'])], files: [{ path: c`C:\Lab\Reports\events.txt` }] }
+      session: { scenario: 'service-stopped' }, verify: { commands: [{ ...check('wevtutil', ['qe', 'System', '/c:3', '/rd:true', '/f:text']), outputPath: c`C:\Lab\Reports\events.txt` }], files: [{ path: c`C:\Lab\Reports\events.txt`, includes: ['Event[0]', 'Log Name: System', 'Computer: PC-014'] }] }
     }),
     lesson({
       id: 'read-file-permissions', track: 'pc', title: t('20 · フォルダーの権限を読む', '20 · Read folder permissions'),
@@ -452,7 +452,7 @@
     lesson({
       id: 'wifi-connection', track: 'network', title: t('24 · Wi-Fi は接続されている？', '24 · Is Wi-Fi connected?'),
       goal: t('接続状態を先に確かめ、DNS の調査に進む前の問題を見つける。', 'Check the link before moving on to DNS troubleshooting.'),
-      explanation: [t('Wi-Fi の接続状態と、インターネット上のサービスが使えることは別です。まず無線の接続先や State を確認します。', 'Being connected to Wi-Fi is different from being able to use an internet service. First inspect the wireless connection and its State.'), t('netsh wlan show interfaces は現在の無線インターフェイスを表示します。接続が切れていれば、接続先や電波・機内モードなどの確認が先になります。', 'netsh wlan show interfaces displays current wireless interfaces. If disconnected, first check the intended network, signal, airplane mode, and related connection settings.')],
+      explanation: [t('Wi-Fi の接続状態と、インターネット上のサービスが使えることは別です。まず無線の接続先や State を確認します。', 'Being connected to Wi-Fi is different from being able to use an internet service. First inspect the wireless connection and its State.'), t('netsh wlan show interfaces は現在の無線インターフェイスを表示します。接続が切れていれば、接続先や電波・機内モードなどの確認が先になります。', 'netsh wlan show interfaces displays current wireless interfaces. If disconnected, first check the intended network, signal, airplane mode, and related connection settings.'), t('この演習で未接続のまま ping 10.20.0.1 を試すと、PING: transmit failed. General failure. と表示されます。この模擬環境では利用できる接続がないためですが、実機ではこの文だけで原因を断定せず、アダプターの状態と併せて読みます。', 'If you try ping 10.20.0.1 while disconnected here, it reports PING: transmit failed. General failure. In this scenario there is no usable connection; on real Windows, read this message together with adapter status rather than treating it as a unique diagnosis.')],
       task: t('無線インターフェイスと ipconfig /all を見て、この PC で最初に確認する範囲を選んでください。', 'Inspect the wireless interface and ipconfig /all, then choose where to start investigating.'),
       example: { command: 'netsh wlan show interfaces', note: t('保存されたプロファイル一覧ではなく、現在の接続状態を見ます。', 'This shows the current connection rather than the list of saved profiles.') },
       hints: [t('最初に netsh wlan show interfaces を実行します。', 'First run netsh wlan show interfaces.'), t('次に ipconfig /all でアダプターの状態を確認します。', 'Then inspect adapter status with ipconfig /all.'), t('State が disconnected なら、名前解決より接続自体の確認を優先します。', 'If State is disconnected, investigate the connection before name resolution.')],
@@ -709,7 +709,7 @@
     lesson({
       id: 'refresh-dns-cache', track: 'recovery', title: t('48 · 古い名前解決を更新', '48 · Refresh stale name resolution'),
       goal: t('古いキャッシュという根拠に対応し、宛先を再確認する。', 'Respond to evidence of a stale cache and verify the resolved destination.'),
-      explanation: [t('この PC にはポータルの古いアドレス 10.20.0.99 が残り、DNS サーバーの現在の回答は 10.20.0.20 です。まずその差を確認します。', 'This PC retains the old portal address 10.20.0.99, while the DNS server now answers 10.20.0.20. First confirm the discrepancy.'), t('ipconfig /flushdns は Windows の DNS リゾルバーキャッシュを消去します。DNS サーバーの誤設定、経路、Web サーバー自体の障害までは直しません。アプリ独自のキャッシュが別にある場合もあります。', 'ipconfig /flushdns clears the Windows DNS resolver cache. It does not fix DNS-server configuration, routing, or the web server. Applications may also have their own caches.')],
+      explanation: [t('この PC にはポータルの古いアドレス 10.20.0.99 が残り、DNS サーバーの現在の回答は 10.20.0.20 です。まずその差を確認します。', 'This PC retains the old portal address 10.20.0.99, while the DNS server now answers 10.20.0.20. First confirm the discrepancy.'), t('ipconfig /flushdns は Windows の DNS リゾルバーキャッシュを消去します。DNS サーバーの誤設定、経路、Web サーバー自体の障害までは直しません。アプリ独自のキャッシュが別にある場合もあります。', 'ipconfig /flushdns clears the Windows DNS resolver cache. It does not fix DNS-server configuration, routing, or the web server. Applications may also have their own caches.'), t('消去前に ping を試すと、旧アドレス宛てに Reply from 10.20.0.14: Destination host unreachable. と返ります。送信元の .14 は自分の PC で、宛先の成功応答ではありません。この教材の ping 統計と終了コードは簡略化しています。実機でも統計や終了コードだけで判断せず、Reply の内容と送信元を読みます。', 'Before the flush, ping to the old address reports Reply from 10.20.0.14: Destination host unreachable. The sender .14 is this PC, not a successful reply from the destination. This simulator simplifies ping statistics and exit codes. On real Windows, inspect the reply text and sender instead of relying on statistics or exit codes alone.')],
       task: t('キャッシュと DNS 回答を比較し、/flushdns 後に intranet.corp.example への ping を確認してください。', 'Compare the cache and DNS answer, flush the cache, then ping intranet.corp.example.'),
       example: { command: 'ipconfig /flushdns', note: t('根拠を確認してから使い、元の対象を再確認します。', 'Use this after checking the evidence, then retest the original target.') },
       hints: [t('/displaydns と nslookup でアドレスを比較します。', 'Compare the addresses using /displaydns and nslookup.'), t('古い情報の消去には ipconfig /flushdns を使います。', 'Use ipconfig /flushdns to clear the stale information.'), t('最後は ping -n 2 intranet.corp.example で 10.20.0.20 の応答を確かめます。', 'Finish with ping -n 2 intranet.corp.example and check for a reply from 10.20.0.20.')],
@@ -818,5 +818,5 @@
     { title: t('Microsoft Learn — Windows Time サービス', 'Microsoft Learn — Windows Time service'), url: 'https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings' },
     { title: t('Microsoft Support — Windows の Wi-Fi 接続問題と IP 構成の更新', 'Microsoft Support — Windows Wi-Fi troubleshooting and IP renewal'), url: 'https://support.microsoft.com/en-us/windows/experience/connectivity-networking/fix-wi-fi-connection-issues-in-windows' }
   ];
-  return { version: '0.1.5', tracks, lessons, references };
+  return { version: '0.1.6', tracks, lessons, references };
 });

@@ -17,12 +17,12 @@
   const reference = [
     ['help', 'help [command]', '対応コマンドと使い方を表示', 'List supported commands or their syntax'],
     ['cls', 'cls', '端末の表示を消去', 'Clear the terminal display'],
-    ['echo', 'echo text', '文字列を表示。> と >> でファイルに記録', 'Print text; use > or >> to save it'],
+    ['echo', 'echo text', '文字列を表示（> と >> でファイルに記録）', 'Print text; use > or >> to save it'],
     ['cd', 'cd [/d] [path] | D:', '現在のフォルダーを表示・移動', 'Show or change the working directory'],
     ['dir', 'dir [path] [/a] [/b] [/s]', 'フォルダーの内容を表示', 'List files and directories'],
     ['type', 'type file [file ...]', 'テキストファイルの内容を表示', 'Display text file contents'],
     ['more', 'more [file] | command | more', 'テキストを表示（この演習ではページ分割なし）', 'Display text (without interactive pagination in this simulator)'],
-    ['findstr', 'findstr [/i] [/n] [/l] [/c:"literal text"] pattern [file ...]', '文字列を含む行を抽出。演習ではリテラル検索のみ', 'Filter matching lines; this simulator supports literal search only'],
+    ['findstr', 'findstr [/i] [/n] [/l] [/c:"literal text"] pattern [file ...]', '文字列を含む行を抽出（リテラル検索のみ）', 'Filter matching lines; this simulator supports literal search only'],
     ['find', 'find [/i] [/n] [/c] "text" [file ...]', '文字列を含む行を表示・集計', 'Find text and optionally count matching lines'],
     ['mkdir', 'mkdir path [path ...]', 'フォルダーを作成', 'Create directories'],
     ['copy', 'copy [/y] source destination', 'ファイルをコピー', 'Copy one file; /y permits overwrite'],
@@ -38,12 +38,12 @@
     ['taskkill', 'taskkill /pid number | /im NotesApp.exe [/f]', '演習用アプリを終了', 'End the simulated exercise application'],
     ['sc', 'sc.exe query [Spooler] | sc.exe qc Spooler', 'サービスの状態・構成を表示', 'Inspect service status or configuration'],
     ['net', 'net start [Spooler] | net stop Spooler | net use', 'サービスとネットワーク接続を確認', 'Inspect services and network connections'],
-    ['wevtutil', 'wevtutil qe System [/c:1..20] [/rd:true|false] [/f:text]', 'System イベントログを読む', 'Read simulated System events'],
+    ['wevtutil', 'wevtutil qe System [/c:1..20] [/rd:true|false] [/f:text]', 'System イベントログを表示', 'Read simulated System events'],
     ['icacls', 'icacls path', 'アクセス許可を表示（変更は未対応）', 'Display access permissions (no modification)'],
     ['attrib', 'attrib [path]', 'ファイルの属性を表示（変更は未対応）', 'Display file attributes (no modification)'],
     ['fsutil', 'fsutil volume diskfree C:', 'ディスクの空き容量を表示', 'Show simulated disk space'],
-    ['sfc', 'sfc /verifyonly | sfc /scannow', 'システムファイルを検証・修復する模擬演習', 'Simulate system file verification or repair'],
-    ['dism', 'DISM /Online /Cleanup-Image /CheckHealth | /ScanHealth | /RestoreHealth', 'Windows イメージを確認・修復する模擬演習', 'Simulate Windows image checks or repair']
+    ['sfc', 'sfc /verifyonly | sfc /scannow', 'システムファイルを検証・修復（模擬演習）', 'Simulate system file verification or repair'],
+    ['dism', 'DISM /Online /Cleanup-Image /CheckHealth | /ScanHealth | /RestoreHealth', 'Windows イメージを確認・修復（模擬演習）', 'Simulate Windows image checks or repair']
   ].map(([name, syntax, summaryJa, summaryEn]) => ({ name, syntax, summaryJa, summaryEn }));
 
   function bounded(value, limit = MAX_OUTPUT) { return value.length > limit ? value.slice(0, limit) + '\n[Simulator: output truncated]\n' : value; }
@@ -113,7 +113,7 @@
   }
   function read(session, path) {
     const file = get(session, path);
-    if (!file) throw new Error('The system cannot find the file specified: ' + path);
+    if (!file) throw new Error('The system cannot find the file specified.');
     if (file.dir) throw new Error('Access is denied. A file path is required: ' + path);
     return file.content;
   }
@@ -409,12 +409,13 @@
         if (args.length !== 1 || args[0].startsWith('/')) return unsupported(name, 'display only');
         const path = pathOf(args[0]), file = get(session, path); if (!file) return fail('The system cannot find the file specified.');
         // (I): inherited ACE; (OI)/(CI): inherit to files/subfolders. The restricted
-        // folder has explicit entries, inherited by its child files.
+        // folder has an explicit student entry and inherited administrative entries.
         // https://learn.microsoft.com/windows-server/administration/windows-commands/icacls
         const restrictedRoot = session.scenario === 'permission' && path.toLowerCase() === 'c:\\lab\\shared files';
         const restricted = restrictedRoot || (session.scenario === 'permission' && path.toLowerCase().startsWith('c:\\lab\\shared files\\'));
         const flags = (restrictedRoot ? '' : '(I)') + (file.dir ? '(OI)(CI)' : '');
-        return ok(path + ' NT AUTHORITY\\SYSTEM:' + flags + '(F)\n' + ' '.repeat(Math.min(path.length + 1, 50)) + 'BUILTIN\\Administrators:' + flags + '(F)\n' + ' '.repeat(Math.min(path.length + 1, 50)) + 'CORP\\student:' + flags + '(' + (restricted ? 'RX' : 'M') + ')\nSuccessfully processed 1 files; Failed processing 0 files\n');
+        const inheritedFlags = '(I)' + (file.dir ? '(OI)(CI)' : '');
+        return ok(path + ' NT AUTHORITY\\SYSTEM:' + inheritedFlags + '(F)\n' + ' '.repeat(Math.min(path.length + 1, 50)) + 'BUILTIN\\Administrators:' + inheritedFlags + '(F)\n' + ' '.repeat(Math.min(path.length + 1, 50)) + 'CORP\\student:' + flags + '(' + (restricted ? 'RX' : 'M') + ')\nSuccessfully processed 1 files; Failed processing 0 files\n');
       }
       case 'attrib': {
         if (args.length > 1 || args.some(a => /^[/+-]/.test(a))) return unsupported(name, 'display only');
@@ -482,7 +483,7 @@
       for (const segment of segments) {
         const command = segment.tokens[0], name = canonical(command), args = segment.tokens.slice(1);
         const cwd = session.cwd, context = { language, resolvedPaths: [] };
-        let answer;
+        let answer, outputMetadata = {};
         try {
           let outputPath;
           if (segment.redir) {
@@ -501,10 +502,11 @@
           if (segment.redir) {
             write(session, outputPath, answer.stdout || '', segment.redir.append);
             answer.effects = (answer.effects || []).concat((segment.redir.append ? 'append:' : 'write:') + outputPath);
+            if (answer.code === 0) outputMetadata = { outputPath, outputAppend: segment.redir.append };
           }
         } catch (error) { answer = fail(error.message || '[Simulator] Unable to run this command.'); }
         answer.stdout = bounded(String(answer.stdout || '')); answer.stderr = bounded(String(answer.stderr || ''));
-        const entry = { name, args, cwd, resolvedPaths: context.resolvedPaths, command: segment.tokens.join(' '), input: bounded(stdin), output: answer.stdout, error: answer.stderr, code: Number.isInteger(answer.code) ? answer.code : 1 };
+        const entry = { name, args, cwd, resolvedPaths: context.resolvedPaths, ...outputMetadata, command: segment.tokens.join(' '), input: bounded(stdin), output: answer.stdout, error: answer.stderr, code: Number.isInteger(answer.code) ? answer.code : 1 };
         result.trace.push(entry);
         result.stderr = bounded(result.stderr + answer.stderr);
         result.effects.push(...(Array.isArray(answer.effects) ? answer.effects : []));
@@ -608,11 +610,35 @@
           if (!Array.isArray(t.resolvedPaths) || t.resolvedPaths.length > 256) throw new Error('Invalid trace paths');
           metadata.resolvedPaths = t.resolvedPaths.map(checkedPath);
         }
-        // Old progress files have neither field. Preserve that absence so the
+        if (own(t, 'outputPath') || own(t, 'outputAppend')) {
+          if (t.code !== 0 || typeof t.outputAppend !== 'boolean') throw new Error('Invalid output provenance');
+          metadata.outputPath = checkedPath(t.outputPath);
+          metadata.outputAppend = t.outputAppend;
+        }
+        // Old progress files lack these fields. Preserve that absence so the
         // grading layer can migrate or conservatively handle missing evidence.
         return { name: cleanString(t.name, 64, 'command name'), args: t.args.map(a => cleanString(a, MAX_LINE, 'argument')), ...metadata, command: cleanString(t.command, MAX_LINE, 'command'), input: cleanString(t.input, MAX_OUTPUT + 100, 'input'), output: cleanString(t.output, MAX_OUTPUT + 100, 'output'), error: cleanString(t.error, MAX_OUTPUT + 100, 'error'), code: t.code };
       });
-      return { line: cleanString(entry.line, MAX_LINE, 'history line'), stdout: cleanString(entry.stdout, MAX_OUTPUT + 100, 'stdout'), stderr: cleanString(entry.stderr, MAX_OUTPUT + 100, 'stderr'), code: entry.code, trace, effects: entry.effects.map(e => cleanString(e, 1024, 'effect')) };
+      const restored = { line: cleanString(entry.line, MAX_LINE, 'history line'), stdout: cleanString(entry.stdout, MAX_OUTPUT + 100, 'stdout'), stderr: cleanString(entry.stderr, MAX_OUTPUT + 100, 'stderr'), code: entry.code, trace, effects: entry.effects.map(e => cleanString(e, 1024, 'effect')) };
+      // Older saves predate outputPath. Recover it without executing anything,
+      // only when parsed syntax, trace identity and a successful write agree.
+      // Relative destinations also require the original trace's working folder.
+      try {
+        const segments = parse(restored.line, session.env);
+        if (restored.code === 0 && segments.length === trace.length) segments.forEach((segment,index) => {
+          const item = trace[index];
+          if (own(item,'outputPath') || !segment.redir || item.code !== 0 || canonical(segment.tokens[0]) !== item.name ||
+            JSON.stringify(segment.tokens.slice(1)) !== JSON.stringify(item.args)) return;
+          const input = inputPath(segment.redir.path);
+          if (!item.cwd && !/^[CD]:\\/i.test(input)) return;
+          const original = { ...session, cwd: item.cwd || session.cwd };
+          const destination = resolve(original,input);
+          const effect = (segment.redir.append ? 'append:' : 'write:') + destination;
+          if (!restored.effects.some(value => value.toLowerCase() === effect.toLowerCase())) return;
+          item.outputPath = destination; item.outputAppend = segment.redir.append;
+        });
+      } catch (_) { /* Unsupported or ambiguous older syntax supplies no new evidence. */ }
+      return restored;
     });
     return session;
   }

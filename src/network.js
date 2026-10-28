@@ -124,7 +124,9 @@
 
   function targetError(target, name) {
     if (target.error === 'unsupported') return unsupported(name + ' <known lab host or address>; this host is not modeled: ' + target.host);
-    if (target.error === 'dns' || target.error === 'nxdomain') return fail(name + ': could not resolve host ' + target.host + '.');
+    if (target.error === 'dns' || target.error === 'nxdomain') return fail(name === 'ping'
+      ? 'Ping request could not find host ' + target.host + '. Please check the name and try again.'
+      : name + ': could not resolve host ' + target.host + '.');
     return null;
   }
 
@@ -193,8 +195,18 @@
     const error = targetError(target, 'ping');
     if (error) return error;
     const connected = reachable(net, target.ip);
+    // These are specific modeled failures, not diagnoses inferred from every
+    // timeout: Wi-Fi is the only remote interface here, and .99 has no ARP peer.
+    // https://learn.microsoft.com/troubleshoot/windows-server/networking/troubleshoot-tcp-ip-communication-guidance
+    const localPrefix = net.adapter.ip.split('.').slice(0, 3).join('.') + '.';
+    const noInterface = !connected && !net.adapter.connected;
+    const unresolvedNeighbor = !connected && net.adapter.connected && target.ip === '10.20.0.99' && target.ip.startsWith(localPrefix);
+    const reply = connected ? 'Reply from ' + target.ip + ': bytes=32 time<1ms TTL=128'
+      : noInterface ? 'PING: transmit failed. General failure.'
+      : unresolvedNeighbor ? 'Reply from ' + net.adapter.ip + ': Destination host unreachable.'
+      : 'Request timed out.';
     const out = ['', 'Pinging ' + (target.literal ? target.ip : target.host + ' [' + target.ip + ']') + ' with 32 bytes of data:'];
-    for (let i = 0; i < parsed.count; i++) out.push(connected ? 'Reply from ' + target.ip + ': bytes=32 time<1ms TTL=128' : 'Request timed out.');
+    for (let i = 0; i < parsed.count; i++) out.push(reply);
     out.push('', 'Ping statistics for ' + target.ip + ':', '    Packets: Sent = ' + parsed.count + ', Received = ' + (connected ? parsed.count : 0) + ', Lost = ' + (connected ? 0 : parsed.count) + ' (' + (connected ? '0' : '100') + '% loss),');
     if (connected) out.push('Approximate round trip times in milli-seconds:', '    Minimum = 0ms, Maximum = 0ms, Average = 0ms');
     return {stdout: lines(out), stderr: '', code: connected ? 0 : 1};
@@ -289,7 +301,11 @@
   }
 
   function netsh(net, args) {
-    const key = args.map(arg => arg.toLowerCase()).join(' ');
+    const words = args.map(arg => arg.toLowerCase());
+    if (['int', 'interface'].includes(words[0]) && ['ip', 'ipv4'].includes(words[1])) {
+      words[0] = 'interface'; words[1] = 'ipv4';
+    }
+    const key = words.join(' ');
     const a = net.adapter;
     if (key === 'wlan show interfaces') return ok(lines(['There is 1 interface on the system:', '', '    Name                   : Wi-Fi', '    Description            : Virtual Wi-Fi Adapter', '    Physical address       : ' + a.mac.toLowerCase().replace(/-/g, ':'), '    State                  : ' + (a.connected ? 'connected' : 'disconnected'), ...(a.connected ? ['    SSID                   : ' + a.ssid, '    Network type           : Infrastructure', '    Radio type             : 802.11ac', '    Authentication         : ' + (net.vpn.connected ? 'WPA2-Personal' : 'WPA2-Enterprise'), '    Channel                : 36', '    Receive rate (Mbps)    : 866.7', '    Transmit rate (Mbps)   : 866.7', '    Signal                 : 92%', '    Profile                : ' + a.ssid] : [])]));
     if (key === 'wlan show profiles') return ok('Profiles on interface Wi-Fi:\n\nGroup policy profiles (read only)\n---------------------------------\n    CORP-Staff\n\nUser profiles\n-------------\n    ' + (net.vpn.connected ? 'All User Profile     : Home-Wi-Fi' : '<None>'));
@@ -414,21 +430,21 @@
   }
 
   const reference = [
-    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew]', 'IP・DNS設定とキャッシュを確認する。', 'Inspect IP/DNS settings and the resolver cache.'],
-    ['ping', 'ping [-n 1..10] [-4] <host>', 'ICMP応答を確認する。アプリの正常性は保証しない。', 'Check ICMP replies; success does not prove application health.'],
-    ['nslookup', 'nslookup <host> [10.20.0.10] | nslookup -type=SRV _ldap._tcp.dc._msdcs.corp.example', 'DNSサーバーに問い合わせる。ローカルキャッシュとは別。', 'Query the DNS server independently of the local resolver cache.'],
-    ['tracert', 'tracert [-d] [-4] <host>', '経路の応答を確認する。無応答だけで原因は断定できない。', 'Inspect responding hops; a silent hop alone does not identify a fault.'],
-    ['route', 'route print', 'ルーティングテーブルを表示する。', 'Display the routing table.'],
-    ['arp', 'arp -a', '近隣IPとMACアドレスの対応を確認する。', 'Display cached local-neighbor IP/MAC mappings.'],
-    ['pathping', 'pathping [-d] [-4] <host>', '経路とICMP応答の統計を確認する。', 'Inspect route and ICMP response statistics.'],
-    ['netstat', 'netstat [-a] [-n] [-o] | netstat -ano', '接続・待ち受け・PIDを表示する。接続先のポート試験ではない。', 'Display local connections, listeners and PIDs; this is not a remote port test.'],
-    ['netsh', 'netsh wlan show interfaces|profiles; netsh interface ipv4 show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線LAN・IPv4・WinHTTP・ファイアウォールを確認する。', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
-    ['net use', 'net use', '既存の共有フォルダー接続を一覧表示する。', 'List existing shared-folder connections.'],
-    ['gpresult', 'gpresult /r [/scope user|computer]', '最後に適用されたグループポリシーの結果を確認する。', 'Inspect the last applied Group Policy results.'],
-    ['nltest', 'nltest /dsgetdc:corp.example', 'ドメインコントローラーの検出結果を確認する。', 'Locate the domain controller.'],
-    ['w32tm', 'w32tm /query /status|/source', '時刻同期の状態・同期先を確認する。ずれがゼロとは限らない。', 'Inspect time synchronization and source; this does not prove zero clock offset.'],
-    ['gpupdate', 'gpupdate [/force]', 'グループポリシーを更新する。', 'Refresh Group Policy.'],
-    ['curl', 'curl.exe --version | curl.exe [-I] [-i] [-v] [-f] <http(s)://lab-host/path>', 'HTTP応答を確認する。-IはHEAD、-iはヘッダー付きGET。', 'Inspect HTTP responses: -I sends HEAD; -i includes headers with GET.']
+    ['ipconfig', 'ipconfig [/all | /displaydns | /flushdns | /renew]', 'IP・DNS 設定とキャッシュを確認', 'Inspect IP/DNS settings and the resolver cache.'],
+    ['ping', 'ping [-n 1..10] [-4] <host>', 'ICMP 応答を確認（アプリの正常性は別途確認）', 'Check ICMP replies; success does not prove application health.'],
+    ['nslookup', 'nslookup <host> [10.20.0.10] | nslookup -type=SRV _ldap._tcp.dc._msdcs.corp.example', 'DNS サーバーの回答を確認（ローカルキャッシュとは別）', 'Query the DNS server independently of the local resolver cache.'],
+    ['tracert', 'tracert [-d] [-4] <host>', '経路の応答を確認（無応答だけでは原因を断定不可）', 'Inspect responding hops; a silent hop alone does not identify a fault.'],
+    ['route', 'route print', 'ルーティングテーブルを表示', 'Display the routing table.'],
+    ['arp', 'arp -a', '近隣 IP と MAC アドレスの対応を表示', 'Display cached local-neighbor IP/MAC mappings.'],
+    ['pathping', 'pathping [-d] [-4] <host>', '経路と ICMP 応答の統計を確認', 'Inspect route and ICMP response statistics.'],
+    ['netstat', 'netstat [-a] [-n] [-o] | netstat -ano', '接続・待ち受け・PID を表示（接続先のポート試験とは別）', 'Display local connections, listeners and PIDs; this is not a remote port test.'],
+    ['netsh', 'netsh wlan show interfaces|profiles; netsh interface|int ipv4|ip show config; netsh winhttp show proxy|advproxy; netsh advfirewall show allprofiles|currentprofile', '無線 LAN・IPv4・WinHTTP・ファイアウォール設定を確認', 'Inspect WLAN, IPv4, WinHTTP and firewall configuration.'],
+    ['net use', 'net use', '既存の共有フォルダー接続を一覧表示', 'List existing shared-folder connections.'],
+    ['gpresult', 'gpresult /r [/scope user|computer]', '最後に適用されたグループポリシーの結果を確認', 'Inspect the last applied Group Policy results.'],
+    ['nltest', 'nltest /dsgetdc:corp.example', 'ドメインコントローラーの検出結果を確認', 'Locate the domain controller.'],
+    ['w32tm', 'w32tm /query /status|/source', '時刻同期の状態・同期先を確認（ずれの量は別途確認）', 'Inspect time synchronization and source; this does not prove zero clock offset.'],
+    ['gpupdate', 'gpupdate [/force]', 'グループポリシーを更新', 'Refresh Group Policy.'],
+    ['curl', 'curl.exe --version | curl.exe [-I] [-i] [-v] [-f] <http(s)://lab-host/path>', 'HTTP 応答を確認（-I は HEAD、-i はヘッダー付き GET）', 'Inspect HTTP responses: -I sends HEAD; -i includes headers with GET.']
   ].map(([name, syntax, summaryJa, summaryEn]) => ({name, syntax, summaryJa, summaryEn}));
 
   return {seed, restore, run, reference};

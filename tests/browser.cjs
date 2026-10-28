@@ -47,11 +47,12 @@ fs.mkdirSync(output, {recursive:true});
           await page.locator(`input[name="answer"][value="${wrong.id}"]`).check();
           await page.locator('[data-action="check"]').click();
           assert.equal(await page.locator('#feedback .success').count(), 0, lesson.id+' rejects wrong interpretation');
-          assert.equal(await page.locator('.choice-feedback').textContent(),wrong.feedback.ja);
+          assert.equal(await page.locator('.choice-feedback').textContent(),wrong.feedback.ja.replace(/\\/g,'¥'));
           assert.ok((await page.locator('.answer-attempts').textContent()).endsWith(String(++attempts)));
           if(lesson.id==='inspect-dns-cache' && attempts===1) await page.screenshot({path:path.join(output,'review-answer-feedback.png'),fullPage:true});
         }
         await page.locator(`input[name="answer"][value="${lesson.question.answer}"]`).check();
+        assert.equal((await page.locator('#evidence').textContent()).includes('このレッスンは完了です'),false,lesson.id+' waits for check before claiming completion');
         await page.locator('[data-action="check"]').click();
       }
       assert.equal(await page.locator('#feedback .success').count(), 1, lesson.id+' completes');
@@ -60,6 +61,24 @@ fs.mkdirSync(output, {recursive:true});
     const completed = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem(WCREngine.KEY)).completed).length);
     assert.equal(completed, Data.lessons.length);
     console.log(`Browser displayed Japanese solutions: ${completed}/${Data.lessons.length} completed with correct interpretation.`);
+
+    // A completed recovery task must request verification after a repeated change.
+    await page.locator('.lesson-item[data-open="capstone-stale-portal"]').click();
+    const completedBeforeRecheck = await page.evaluate(()=>JSON.parse(localStorage.getItem(WCREngine.KEY)).completed);
+    await run('ipconfig /flushdns');
+    assert.equal(await page.locator('#feedback .success').count(),0);
+    assert.ok((await page.locator('#feedback .recheck').textContent()).includes('最新の復旧操作の後に再確認が必要'));
+    assert.ok((await page.locator('#evidence').textContent()).includes('変更後の再確認が必要'));
+    await page.locator('#language-button').click();
+    assert.ok((await page.locator('#feedback .recheck').textContent()).includes('after the latest recovery action'));
+    await page.locator('#language-button').click();
+    await page.reload(); await page.locator('.hero-actions [data-open]').click();
+    assert.equal(await page.locator('#feedback .recheck').count(),1);
+    await page.screenshot({path:path.join(output,'review-recheck.png'),fullPage:true});
+    await run(Data.lessons.find(l=>l.id==='capstone-stale-portal').solution.at(-1));
+    assert.equal(await page.locator('#feedback .success').count(),1);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem(WCREngine.KEY)).completed),completedBeforeRecheck);
+    console.log('Recovery recheck notice passed after repeated flushdns, language switch and reload; subsequent verification restores current success.');
 
     // Japanese keyboards can enter actual yen characters rather than U+005C.
     // Exercise the form, grading, completion and persistence in a clean profile.
@@ -76,7 +95,7 @@ fs.mkdirSync(output, {recursive:true});
       await pathPage.locator('[data-action="reset"]').last().click();
       await pathRun('cd'); await pathRun(`cd /d c:${separator}Lab`);
       assert.equal(await pathPage.locator('#feedback .success').count(), 1, `L02 separator ${separator}`);
-      assert.ok((await pathPage.locator('#prompt-path').textContent()).includes('C:\\Lab'));
+      assert.ok((await pathPage.locator('#prompt-path').textContent()).includes('C:¥Lab'));
       await pathInput().fill(`type C:${separator}Lab${separator}read`);
       await pathInput().press('Tab');
       assert.equal(await pathInput().inputValue(), 'type C:\\Lab\\readme.txt');
@@ -118,6 +137,25 @@ fs.mkdirSync(output, {recursive:true});
     await pathPage.reload(); await pathPage.locator('#sandbox-button').click();
     await pathRun('type C:\uffe5Lab\uffe5Reports\uffe5amount.txt');
     assert.ok((await pathPage.locator('#console-output .history-entry').last().textContent()).includes('\u00a51000 \uffe52000'));
+    // Rendering changes the glyph convention, never the command history or files.
+    await pathRun('cd /d C:\\Lab'); await pathRun('dir');
+    assert.equal(await pathPage.locator('#prompt-path').textContent(),'C:¥Lab');
+    assert.ok((await pathPage.locator('#console-output .history-entry').last().textContent()).includes('Directory of C:¥Lab'));
+    const rawSession = await pathPage.evaluate(()=>JSON.parse(localStorage.getItem(WCREngine.KEY)).checkpoints.sandbox.session);
+    assert.equal(rawSession.cwd,'C:\\Lab');
+    assert.ok(rawSession.history.at(-1).stdout.includes('Directory of C:\\Lab'));
+    await pathPage.locator('.trace-open').last().click();
+    assert.ok((await pathPage.locator('#dialog-body').textContent()).includes('Directory of C:¥Lab'));
+    await pathPage.locator('#dialog-close').click();
+    const terminalDraft = 'echo C:\\literal\\text ¥1000';
+    await pathInput().fill(terminalDraft);
+    await pathPage.screenshot({path:path.join(output,'review-terminal-ja.png'),fullPage:true});
+    await pathPage.locator('#language-button').click();
+    assert.equal(await pathPage.locator('#prompt-path').textContent(),'C:\\Lab');
+    assert.ok((await pathPage.locator('#console-output .history-entry').last().textContent()).includes('Directory of C:\\Lab'));
+    assert.equal(await pathInput().inputValue(),terminalDraft);
+    assert.deepEqual(await pathPage.evaluate(()=>JSON.parse(localStorage.getItem(WCREngine.KEY)).checkpoints.sandbox.session),rawSession);
+    await pathPage.screenshot({path:path.join(output,'review-terminal-en.png'),fullPage:true});
     assert.deepEqual(pathErrors, []);
     await pathContext.close();
     console.log('Path display/input checks passed: JA/EN examples, insertion, copied solutions, language switch, preserved draft, grading, completion, literal text and reload.');

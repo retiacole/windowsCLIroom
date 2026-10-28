@@ -371,3 +371,51 @@ test('native command streams end in one newline so appended reports retain line 
   }
   assert.equal(run(s, 'curl', 'https://intranet.corp.example/health').stdout, 'OK\n');
 });
+
+test('ping uses Windows DNS failure text without changing other DNS client errors', () => {
+  const s = session('dns-wrong');
+  const failed = run(s, 'ping', 'intranet.corp.example');
+  assert.equal(failed.code, 1);
+  assert.equal(failed.stderr, 'Ping request could not find host intranet.corp.example. Please check the name and try again.\n');
+  assert.equal(failed.stdout, '');
+  assert.match(run(s, 'nslookup', 'intranet.corp.example').stderr, /timed-out/);
+  assert.match(run(s, 'curl', '-I', 'https://intranet.corp.example').stderr, /curl: \(6\) Could not resolve host:/);
+  assert.match(run(s, 'ping', '10.20.0.20').stdout, /Reply from 10\.20\.0\.20: bytes=32/);
+});
+
+test('ping distinguishes no usable interface, unresolved local neighbor, and remote timeout', () => {
+  const disconnected = run(session('wifi-off'), 'ping', '-n', '2', '10.20.0.1');
+  assert.equal(disconnected.code, 1);
+  assert.equal(disconnected.stdout.match(/PING: transmit failed\. General failure\./g).length, 2);
+  assert.doesNotMatch(disconnected.stdout, /Request timed out|Destination host unreachable/);
+  assert.equal(run(session('wifi-off'), 'ping', '127.0.0.1').code, 0);
+  const stale = session('dns-cache');
+  const missing = run(stale, 'ping', '-n', '2', 'intranet.corp.example');
+  assert.equal(missing.code, 1);
+  assert.match(missing.stdout, /Pinging intranet\.corp\.example \[10\.20\.0\.99\]/);
+  assert.equal(missing.stdout.match(/Reply from 10\.20\.0\.14: Destination host unreachable\./g).length, 2);
+  assert.doesNotMatch(missing.stdout, /Request timed out|General failure|bytes=32/);
+  assert.match(run(session(), 'ping', '10.20.0.99').stdout, /Reply from 10\.20\.0\.14: Destination host unreachable/);
+  const vpn = run(session('vpn-route'), 'ping', '10.20.0.99');
+  assert.match(vpn.stdout, /Request timed out/);
+  assert.doesNotMatch(vpn.stdout, /Destination host unreachable|General failure/);
+  run(stale, 'ipconfig', '/flushdns');
+  const recovered = run(stale, 'ping', 'intranet.corp.example');
+  assert.equal(recovered.code, 0);
+  assert.match(recovered.stdout, /Reply from 10\.20\.0\.20: bytes=32/);
+  assert.doesNotMatch(recovered.stdout, /unreachable|timed out|General failure/);
+});
+
+test('netsh IPv4 context aliases match the formal command and do not accept arbitrary prefixes', () => {
+  for (const scenario of ['base', 'wifi-off', 'dns-wrong', 'vpn-route']) {
+    const s = session(scenario), before = JSON.stringify(s.net);
+    const formal = run(s, 'netsh', 'interface', 'ipv4', 'show', 'config');
+    for (const args of [['int','ipv4','show','config'],['interface','ip','show','config'],['int','ip','show','config'],['INT','IP','SHOW','CONFIG']]) assert.deepEqual(run(s, 'netsh', ...args), formal);
+    assert.equal(JSON.stringify(s.net), before);
+    for (const args of [['i','ip','show','config'],['int','ipv','show','config'],['int','ip','show','conf'],['int','ip','show','config','bogus']]) {
+      const result = run(s, 'netsh', ...args);
+      assert.equal(result.unsupported, true);
+      assert.match(result.stderr, /netsh interface ipv4 show config/);
+    }
+  }
+});

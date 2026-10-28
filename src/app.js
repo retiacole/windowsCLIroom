@@ -31,11 +31,14 @@
     previous: ['← 前へ', '← Previous'], next: ['次へ →', 'Next →'], finish: ['コース一覧へ →', 'Back to courses →'],
     lessonList: ['レッスン一覧', 'Lesson list'], terminal: ['コマンドを試す', 'TRY A COMMAND'], simulated: ['仮想PC', 'SIMULATED'],
     resetLesson: ['この問題をリセット', 'Reset this lesson'], clear: ['表示を消す', 'Clear'], reset: ['この環境をやり直す', 'Reset this environment'],
-    welcome: ['Windows 11 / CMD の学習用環境です。\nhelp で対応コマンドを確認できます。', 'Learning environment: Windows 11 / CMD.\nType help to see supported commands.'],
+    welcome: ['英語版 Windows 11 / CMD を想定した学習用環境です。\nhelp で対応コマンドを確認できます。', 'Learning environment: English-language Windows 11 / CMD.\nType help to see supported commands.'],
+    terminalDisplay: ['端末のバックスラッシュは円記号で表示しています。入力・保存データは書き換えません。', 'Terminal messages follow English-language Windows. Display language does not rewrite your input or saved data.'],
     input: ['コマンドを入力', 'Enter a command'], run: ['実行', 'Run'], history: ['履歴', 'history'], completion: ['補完', 'complete'],
     keyboardNext: ['完了後・入力欄が空なら次へ', 'next when complete and input is empty'],
     evidencePending: ['コマンドで手がかりを集めよう', 'Gather evidence with commands'], evidenceReady: ['必要な実行結果がそろいました', 'The required evidence is ready'],
     evidenceHint: ['「やってみよう」の条件を確認してください。', 'Follow the task to collect the evidence.'], evidenceQuestion: ['結果を読んで、左の問題に答えましょう。', 'Read the output and answer the lesson question.'],
+    recheckTitle: ['変更後の再確認が必要です', 'Recheck after the latest change'],
+    recheckText: ['最新の復旧操作の後に再確認が必要です。課題にある確認コマンドをもう一度実行してください。保存する課題では、再確認の結果も指定ファイルへ記録します。', 'Verification is required after the latest recovery action. Run the task’s verification commands again. If the task requires a report, record the new results in that file too.'],
     completedTitle: ['このレッスンは完了です', 'Lesson completed'], completedText: ['次のレッスンへ進むか、この環境で練習を続けられます。', 'Continue to the next lesson or keep practicing here.'],
     recordTitle: ['完了記録あり · 復習中', 'Previously completed · Practicing again'], recordText: ['完了記録は保存されています。現在の環境で課題を再確認する場合は、条件を満たしてから「結果を確認する」を押してください。', 'Your completion record is saved. To verify this environment again, meet the task requirements and check your work.'],
     notYet: ['もうひとつ確かめましょう', 'One more thing to check'], needCommands: ['必要な実行結果がまだそろっていません。課題のコマンドや保存先を確認してください。', 'Some evidence is still missing. Check the task, command arguments, and output file paths.'],
@@ -59,18 +62,20 @@
     scenario: ['環境を選ぶ', 'Choose a scenario'], scenarioNote: ['切り替えると、練習室の履歴と仮想ファイルを初期化します。', 'Switching resets the playground’s history and virtual files.'],
     ready: ['準備できています', 'Ready to explore'], savedDetail: ['オフラインで利用できます。進捗はこのブラウザだけに保存されます。配布HTMLは変更しません。', 'Works offline. Progress stays in this browser; the distributed HTML file is not modified.'],
     noCandidates: ['補完候補がありません。', 'No completion candidates.'],
-    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.5 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.5 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
+    about: ['教材について', 'About this room'], aboutText: ['windowsCLIroom v0.1.6 · 日本語 / English\nWindows 11のCMDを題材にした、一般的なITトラブル対応の入門教材です。PowerShellのオブジェクト処理・スクリプトは別教材を想定しています。', 'windowsCLIroom v0.1.6 · 日本語 / English\nAn introduction to everyday IT troubleshooting through Windows 11 CMD. PowerShell objects and scripting belong in a separate course.']
   };
   let state = Engine.empty(), view = 'home', currentId = '', composing = false, historyCursor = -1, historyDraft = '';
   let saveTimer, toastTimer, feedback = null, courseSearch = '', courseOpen = false, unreadableProgress = null;
   const visibleFrom = {};
   const t = key => (dict[key] || [key, key])[state.language === 'en' ? 1 : 0];
   const shortTitle = value => loc(value).replace(/^\d+\s*·\s*/, '');
-  // Localize authored lesson text and examples, never user input or terminal output.
+  // Localize authored lesson text and examples; never mutate command input or saved data.
   const loc = value => {
     const text = typeof value === 'string' ? value : value?.[state.language] || value?.ja || '';
     return state.language === 'ja' ? text.replace(/\\/g, '¥') : text;
   };
+  // Apply the same glyph convention only while rendering read-only terminal text.
+  const terminalText = value => state.language === 'ja' ? String(value ?? '').replace(/\\/g, '¥') : String(value ?? '');
   const lessonById = id => Data.lessons.find(l => l.id === id);
   const trackById = id => Data.tracks.find(tr => tr.id === id);
   const lesson = () => lessonById(currentId);
@@ -150,7 +155,7 @@
     return `<div class="breadcrumb"><span>${escape(loc(tr.title))} · ${String(index + 1).padStart(2, '0')} / ${Data.lessons.length}</span><button class="small mobile-course-toggle" data-action="courses">${t('lessonList')}</button></div><h1>${escape(loc(l.title))}</h1><p class="lesson-goal">${escape(loc(l.goal))}</p><div class="lesson-explanation">${l.explanation.map(p => `<p>${escape(loc(p))}</p>`).join('')}</div><div class="example"><p class="label">${t('example')}</p><pre>${escape(loc(l.example.command))}</pre><p class="example-note">${escape(loc(l.example.note))}</p><button class="small" style="margin-top:9px" data-insert="${escape(loc(l.example.command))}">${t('fillExample')}</button></div><div class="task"><p class="label">${t('task')}</p><p>${escape(loc(l.task))}</p></div><div id="hints"></div>${l.question ? `<section class="question"><p class="label">${t('interpretation')}</p><fieldset><legend>${escape(loc(l.question.prompt))}</legend>${l.question.choices.map(ch => `<label class="choice"><input type="radio" name="answer" value="${escape(ch.id)}" ${cp().answer === ch.id ? 'checked' : ''}><span>${escape(loc(ch.text))}</span></label>`).join('')}</fieldset></section>` : ''}<div class="check-actions"><button id="check-button" class="primary" data-action="check">${t('check')}</button><button id="lesson-reset" data-action="reset">↺ ${t('resetLesson')}</button></div><div id="feedback" aria-live="polite"></div><div class="lesson-controls"><button class="small" data-action="previous" ${index === 0 ? 'disabled' : ''}>${t('previous')}</button><button id="next-button" class="secondary" data-action="next">${index === Data.lessons.length - 1 ? t('finish') : t('next')}</button></div>`;
   }
   function consoleHTML() {
-    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div></form></div><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
+    return `<div class="console-title"><h2>${t('terminal')}</h2><span class="pill"><span class="dot"></span>${t('simulated')}</span></div><div class="console"><div class="terminal-top"><span>Command Prompt · PC-014</span><div class="terminal-actions"><button data-action="clear">${t('clear')}</button><button data-action="reset">↺ ${t('reset')}</button></div></div><div id="console-output" class="console-output" role="log" aria-label="${escape(t('terminal'))}" aria-live="polite" aria-relevant="additions"></div><form id="command-form" class="command-form" autocomplete="off"><div id="prompt-path" class="prompt-path"></div><div class="input-row"><span aria-hidden="true">&gt;</span><input id="command-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" maxlength="4096" aria-label="${t('input')}" placeholder="${t('input')}"><button class="run-button" type="submit">${t('run')} ↵</button></div></form></div><p class="micro terminal-display-note">${t('terminalDisplay')}</p><div class="console-tip"><span><kbd>↑ ↓</kbd> ${t('history')}</span><span><kbd>Tab</kbd> ${t('completion')}</span><span><kbd>→</kbd> ${t('keyboardNext')}</span></div><div id="evidence" class="clue-status"></div><details class="file-panel"><summary>${t('files')}</summary><div id="file-list" class="file-list"></div></details><p class="sim-note">${t('simNote')}</p>`;
   }
   function render() {
     setHeader();
@@ -169,21 +174,24 @@
   function renderConsole() {
     const box = $('console-output'); if (!box) return;
     const history = cp().session.history || [], start = Math.max(visibleFrom[currentId] || 0, history.length - 30);
-    box.innerHTML = `<div class="terminal-welcome">${escape(t('welcome')).replace(/\n/g, '<br>')}</div>` + history.slice(start).map((h, i) => `<div class="history-entry"><div class="history-command"><span class="prompt-prefix">&gt;</span> ${escape(h.line)}</div>${h.stdout ? `<pre>${escape(h.stdout)}</pre>` : ''}${h.stderr ? `<pre class="history-error">${escape(h.stderr)}</pre>` : ''}${h.trace?.length ? `<button class="trace-open" data-trace="${start + i}">${t('trace')} · ${h.trace.length}</button>` : ''}</div>`).join('');
-    $('prompt-path').textContent = cp().session.cwd; box.scrollTop = box.scrollHeight;
+    box.innerHTML = `<div class="terminal-welcome">${escape(t('welcome')).replace(/\n/g, '<br>')}</div>` + history.slice(start).map((h, i) => `<div class="history-entry"><div class="history-command"><span class="prompt-prefix">&gt;</span> ${escape(terminalText(h.line))}</div>${h.stdout ? `<pre>${escape(terminalText(h.stdout))}</pre>` : ''}${h.stderr ? `<pre class="history-error">${escape(terminalText(h.stderr))}</pre>` : ''}${h.trace?.length ? `<button class="trace-open" data-trace="${start + i}">${t('trace')} · ${h.trace.length}</button>` : ''}</div>`).join('');
+    $('prompt-path').textContent = terminalText(cp().session.cwd); box.scrollTop = box.scrollHeight;
   }
   function renderFiles() {
     if (!$('file-list')) return;
-    $('file-list').innerHTML = Shell.listFiles(cp().session).filter(f => !f.dir).sort((a, b) => a.path.localeCompare(b.path)).map(f => `<div class="file-row"><span class="file-name">${escape(f.path)}</span><button data-read="${escape(f.path)}">${t('read')}</button><button data-path="${escape(f.path)}">${t('insert')}</button></div>`).join('');
+    $('file-list').innerHTML = Shell.listFiles(cp().session).filter(f => !f.dir).sort((a, b) => a.path.localeCompare(b.path)).map(f => `<div class="file-row"><span class="file-name">${escape(terminalText(f.path))}</span><button data-read="${escape(f.path)}">${t('read')}</button><button data-path="${escape(f.path)}">${t('insert')}</button></div>`).join('');
   }
   function renderStatus() {
     if (!$('evidence')) return;
     const l = lesson(), result = l ? Engine.grade(l, cp().session, cp().answer, cp().evidence) : null;
     const done = l && !!state.completed[l.id];
-    $('evidence').innerHTML = `<div><strong class="${result?.commandOk || done ? 'ready' : ''}">${!l ? t('ready') : done ? `✓ ${t('completedTitle')}` : result.commandOk ? `✓ ${t('evidenceReady')}` : t('evidencePending')}</strong><span class="subtle">${!l ? t('saved') : done ? t('completedText') : result.commandOk && l.question ? t('evidenceQuestion') : t('evidenceHint')}</span></div>`;
+    const statusTitle = !l ? t('ready') : result.needsRecheck ? t('recheckTitle') : done && result.ok ? '✓ ' + t('completedTitle') : done ? t('recordTitle') : result.commandOk ? t('evidenceReady') : t('evidencePending');
+    const statusText = !l ? t('saved') : result.needsRecheck ? t('recheckText') : done && result.ok ? t('completedText') : done ? t('recordText') : result.commandOk && l.question ? t('evidenceQuestion') : t('evidenceHint');
+    $('evidence').innerHTML = `<div><strong class="${result?.commandOk && !result.needsRecheck ? 'ready' : ''}">${statusTitle}</strong><span class="subtle">${statusText}</span></div>`;
     if (!l) return;
     const f = $('feedback');
-    if (done && result.ok) f.innerHTML = `<div class="feedback success"><strong>✓ ${t('completedTitle')}</strong><p>${escape(loc(l.success))}</p>${l.question ? `<p style="margin-top:8px">${escape(loc(l.question.explanation))}</p>` : ''}</div>`;
+    if (result.needsRecheck) f.innerHTML = `<div class="feedback recheck"><strong>${t('recheckTitle')}</strong><p>${t('recheckText')}</p></div>`;
+    else if (done && result.ok) f.innerHTML = `<div class="feedback success"><strong>✓ ${t('completedTitle')}</strong><p>${escape(loc(l.success))}</p>${l.question ? `<p style="margin-top:8px">${escape(loc(l.question.explanation))}</p>` : ''}</div>`;
     else if (done && !feedback) f.innerHTML = `<div class="feedback record"><strong>✓ ${t('recordTitle')}</strong><p>${t('recordText')}</p></div>`;
     else if (feedback) {
       const choice = feedback.commandOk && l.question?.choices.find(ch=>ch.id===cp().answer);
@@ -268,7 +276,7 @@
   }
   function showTrace(index) {
     const entry = cp().session.history[index]; if (!entry) return;
-    openDialog(t('trace'), `<pre>${escape(entry.line)}</pre>${entry.trace.map((tr, i) => `<section class="trace-stage"><h3>${i + 1}. ${escape(tr.command || tr.name)} · exit ${tr.code}</h3><p class="label">${t('traceInput')}</p><pre>${escape(tr.input || t('noInput'))}</pre><p class="label">${t('traceOutput')}</p><pre>${escape(tr.output || '—')}</pre>${tr.error ? `<p class="label">${t('traceError')}</p><pre>${escape(tr.error)}</pre>` : ''}</section>`).join('')}`);
+    openDialog(t('trace'), `<pre>${escape(terminalText(entry.line))}</pre>${entry.trace.map((tr, i) => `<section class="trace-stage"><h3>${i + 1}. ${escape(terminalText(tr.command || tr.name))} · exit ${tr.code}</h3><p class="label">${t('traceInput')}</p><pre>${escape(terminalText(tr.input || t('noInput')))}</pre><p class="label">${t('traceOutput')}</p><pre>${escape(terminalText(tr.output || '—'))}</pre>${tr.error ? `<p class="label">${t('traceError')}</p><pre>${escape(terminalText(tr.error))}</pre>` : ''}</section>`).join('')}`);
   }
   function exportData(rescue = false) {
     save(); const blob = new Blob([rescue ? unreadableProgress : JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -309,7 +317,7 @@
     else if (button.dataset.action) action(button.dataset.action);
     else if (button.dataset.insert !== undefined) insert(button.dataset.insert);
     else if (button.dataset.path) insert(`"${button.dataset.path}"`, true);
-    else if (button.dataset.read) { const f = Shell.listFiles(cp().session).find(f => f.path === button.dataset.read); if (f) openDialog(f.path, `<pre>${escape(f.content)}</pre>`); }
+    else if (button.dataset.read) { const f = Shell.listFiles(cp().session).find(f => f.path === button.dataset.read); if (f) openDialog(terminalText(f.path), `<pre>${escape(terminalText(f.content))}</pre>`); }
     else if (button.dataset.trace !== undefined) showTrace(Number(button.dataset.trace));
   });
   document.addEventListener('change', e => { if (e.target.matches('input[name="answer"]')) { cp().answer = e.target.value; feedback = null; renderStatus(); save(); } });

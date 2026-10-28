@@ -351,7 +351,7 @@ test('help follows the invocation language without persisting a language in the 
   assert.match(en, /List files and directories/); assert.doesNotMatch(en, /フォルダーの内容を表示/);
   assert.match(Shell.run(s, 'help dir', {language:'ja'}).stdout, /フォルダーの内容を表示/);
   assert.doesNotMatch(Shell.run(s, 'dir /?', {language:'ja'}).stdout, /List files/);
-  assert.match(Shell.run(s, 'help curl', {language:'ja'}).stdout, /HTTP応答を確認/);
+  assert.match(Shell.run(s, 'help curl', {language:'ja'}).stdout, /HTTP 応答を確認/);
   assert.match(Shell.run(s, 'help unknown', {language:'ja'}).stderr, /ヘルプはありません/);
   assert.match(Shell.run(s, 'help dir').stdout, /List files and directories/);
   assert.equal(Object.hasOwn(s, 'language'), false);

@@ -1,8 +1,10 @@
 # windowsCLIroom
 
-v0.1.5 — L08 は `move` による名前変更も合格として扱います。課題のそばの「この問題をリセット」も利用できます。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
+v0.1.6 — 選択肢の文体、Windows のエラー表示、採点条件を改善しました。日本語では端末の表示も円記号に統一し、復旧操作後に必要な再確認を案内します。[変更内容](REVIEW.md)と[確認記録](VALIDATION.md)を同梱しています。
 
 Windows の一般的な IT トラブルシューティングを、ブラウザーで練習する教材です。Windows 11 のコマンドプロンプト（CMD）を想定し、「説明を読む → コマンドを打つ → 結果を読み取る」を短い課題で学びます。日本語と英語を切り替えられます。
+
+模擬 PC のコマンド出力・エラー・日時は英語版 Windows を想定しています。教材の説明を日本語にしても、出力の本文は英語です（教材独自の `help` は日英対応）。実機の日本語版 Windows では、メッセージや日時の表記が変わります。
 
 ## 開き方
 
@@ -20,11 +22,11 @@ Windows の一般的な IT トラブルシューティングを、ブラウザ�
 
 入力欄では Enter で実行、上下キーで履歴、Tab でコマンド名・パスの補完ができます。「コマンド帳」または `help` で、この教材が対応する書式を確認できます。
 
-日本語の課題文・説明・ヒント・見本・解答例では、`C:¥Lab¥Shared Files¥guide.txt` のようにパス区切りを円記号で表示します。英語では `C:\Lab\Shared Files\guide.txt` と表示します。見本を入力欄に入れる場合も、画面と同じ表記で実行できます。言語を切り替えても、入力途中のコマンド・実行履歴・ファイルの内容は変えません。
+日本語の課題文・説明・ヒント・見本・解答例では、`C:¥Lab¥Shared Files¥guide.txt` のようにパス区切りを円記号で表示します。端末のプロンプト・履歴・出力、ファイルのプレビュー、「処理の流れ」も、バックスラッシュを表示時だけ円記号に置き換えます。英語ではバックスラッシュを表示します。見本を入力欄に入れる場合も、画面と同じ表記で実行できます。言語を切り替えても、入力途中のコマンド・保存済みの履歴・ファイルの内容は書き換えません。
 
 Windows のパスの区切りはバックスラッシュ（`\`）です。日本語環境では円記号のように表示される場合があります。この教材では入力補助として、パス中の `¥`（U+00A5）・`￥`（U+FFE5）も区切りとして扱います。`C:\Lab`、`C:¥Lab`、`C:￥Lab`、`C:/Lab` で同じフォルダーを指定でき、採点と Tab 補完にも対応します。`echo` の本文・検索文字列・URL の円記号は変換しません。これは教材の入力補助であり、実機の Windows が別の Unicode 文字を常に同じように扱うという意味ではありません。
 
-完了後、入力欄が空なら右矢印キーで次に進めます。「処理の流れ」では、パイプの各段が受け取ったテキストと出力を確認できます。復旧の課題では、操作前後の確認順序と最終状態も採点します。やり直しても過去の完了記録は残り、現在の環境の合否とは区別して表示します。
+完了後、入力欄が空なら右矢印キーで次に進めます。「処理の流れ」では、パイプの各段が受け取ったテキストと出力を確認できます。復旧の課題では、操作前後の確認順序と最終状態も採点します。復旧操作を繰り返すと「最新の復旧操作の後に再確認が必要です」と案内し、課題の確認コマンドをもう一度実行するよう促します。やり直しても過去の完了記録は残り、現在の環境の合否とは区別して表示します。
 
 選択問題は、選んだ答えごとの解説と、その環境での誤答回数を表示します。34 問・102 選択肢の本文と解説は日英対応です。`help` も画面で選択中の言語で表示します。既に出力した履歴の言語は変わりません。
 
@@ -41,6 +43,8 @@ Windows のパスの区切りはバックスラッシュ（`\`）です。日本
 題材は日常の IT サポートです。攻撃手法やセキュリティ製品の操作は前提にしません。PowerShell のオブジェクト処理やスクリプトは別教材の範囲です。
 
 `netsh` は無線 LAN・IPv4・WinHTTP・ファイアウォールの状態を確認する用途で扱います。AD の情報は `gpresult`、`nltest`、`w32tm` などで調べます。コマンドの成功だけで原因を断定せず、次に確認する対象を考える構成です。
+
+IPv4 設定の表示では `netsh interface ipv4 show config` に加え、`netsh int ipv4 show config`、`netsh interface ip show config`、`netsh int ip show config` を実行・採点できます。
 
 Windows 11 には `curl.exe` が同梱されています。Windows PowerShell 5.1 の `curl` エイリアスとの混同を避けるため、教材の例では主に `curl.exe` と表記します。同梱版の機能・バージョンは環境によって異なります。[Microsoft の説明](https://learn.microsoft.com/en-us/windows/curl/) と [curl プロジェクトの Windows 同梱版の説明](https://curl.se/windows/microsoft.html) を参照してください。
 
@@ -79,12 +83,13 @@ PC-014、CORP ドメイン、IP アドレス、ログ、サービスの状態な
 - `findstr` はリテラル検索の範囲です。正規表現は再現せず、`/l` や `/c:` を使った検索に対応します。
 - ファイル操作は仮想 C・D ドライブ内のテキストが対象です。ワイルドカード、UNC パスのファイル操作、ディレクトリのコピー・移動は未対応です。`more` は対話的なページ分割を行いません。
 - ネットワークは登録済みの宛先と故障シナリオだけを再現します。未登録の宛先には未対応と表示します。IPv6、実際の待ち時間、認証、TLS 証明書の検証などは再現しません。
+- `ping` は名前解決失敗、送信できない状態、同一 LAN の宛先未到達、タイムアウトを区別して表示します。表示は各シナリオの想定であり、同じ症状なら実機でも必ず同じ文言になるわけではありません。統計は Echo Reply の成功数、終了コードは到達の成否として簡略化しています。実機では統計や終了コードだけで判断せず、応答文と `Reply from` の送信元も読みます。
 - WinHTTP のプロキシ設定を `curl.exe` やブラウザーが自動的に使うとは扱いません。DNS サーバーへの問い合わせとローカル DNS キャッシュも区別します。
 - 1 行の入力は 4,096 文字、パイプは最大 16 段階、仮想ファイルは最大 256 件、1 ファイルは最大 65,536 文字です。履歴は最新 80 件を上限とし、保存量の制限でも古い履歴を削減します。
 
 採点用の達成条件は、表示用の履歴とは別に小さな記録として保持します。80 件を超えても、確認済みの条件は失われません。現在地、ファイルの内容、サービスの現在状態は引き続きその時点の状態で判定します。復旧操作を再実行した場合は、その後の再確認が必要です。「この環境をやり直す」で採点記録と誤答回数も初期化します。
 
-`fsutil` の出力は、Windows 11 を想定した容量表示の抜粋です。すべての欄の完全再現ではありません。`echo` の末尾空白は簡略化しており、実機との差と余分な空白を避ける書き方を L09 で説明します。
+`fsutil` の出力は、Windows 11 を想定した容量表示の抜粋です。すべての欄の完全再現ではありません。`echo` の末尾空白も簡略化しています。実機では `echo text > file` の空白が本文に入り、数字を `>` の直前に置くと出力先の番号として解釈される場合があります。L09 で両方の違いを説明します。教材はハンドル番号やキャレットによるエスケープを再現しません。[Microsoft の解説](https://devblogs.microsoft.com/oldnewthing/20060517-00/?p=31173)も参照してください。
 
 未対応の構文を、成功した操作として扱わない設計です。端末のエラーメッセージや出力の配置は学習向けに簡略化しています。実際の環境では Windows の版、権限、ドメイン参加状況、設定によって利用可否・出力が変わります。
 
@@ -155,9 +160,13 @@ Chromium の代わりにインストール済みの Chrome を使う場合は、
 
 Five independent tracks cover CMD basics, PC and application inspection, networking and `curl.exe`, workplace AD diagnostics, and recovery exercises. Commands operate only on a fictional in-browser PC. They never execute Windows processes, access your real files, or make network requests. Only a documented subset of CMD syntax and options is implemented; use `help` or the command reference inside the app.
 
-Japanese lesson text, hints and command examples display path separators as `¥`; English keeps backslashes. Inserted examples use the displayed spelling. Switching languages preserves command drafts, history and file contents.
+The simulated PC uses English-language Windows messages and date formats. These differ on Japanese-language Windows. The simulator's own `help` follows the selected UI language.
+
+Japanese lesson text, hints and command examples display path separators as `¥`; read-only terminal output, prompts, history, file previews and trace views also render backslashes as yen signs. English keeps backslashes. Inserted examples use the displayed spelling. Switching languages does not rewrite command drafts, stored history or file contents.
 
 As a simulator input aid, typed yen signs `¥` (U+00A5) and `￥` (U+FFE5) are accepted as path separators, including grading and Tab completion. Echo text, search strings, URLs and stored file contents are preserved. This does not imply that real Windows treats these Unicode characters as backslashes in every environment.
+
+Ping failures use scenario-specific Windows messages, while statistics and exit codes are simplified to Echo Reply success and reachability. On real Windows, read the reply text and source address too. Repeating a recovery action prompts you to verify again; earlier completion records remain saved.
 
 Progress is saved in browser storage. Use **Settings & progress → Export progress / Import progress** to back it up or move it between browsers. Local-file storage behavior varies by browser.
 

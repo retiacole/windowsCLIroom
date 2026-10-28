@@ -13,6 +13,12 @@
   const arr = v => v === undefined ? [] : Array.isArray(v) ? v : [v];
   function canonicalArgs(name, args) {
     const curlFlags = {'--head':'-I','--include':'-i','--verbose':'-v','--fail':'-f','-V':'--version'};
+    if (name === 'netsh') {
+      const words = args.map(arg => arg.toLowerCase());
+      if (words[0] === 'int') words[0] = 'interface';
+      if (words[0] === 'interface' && words[1] === 'ip') words[1] = 'ipv4';
+      return words;
+    }
     return args.flatMap(arg => {
       if (name === 'curl') {
         if (Object.prototype.hasOwnProperty.call(curlFlags,arg)) return [curlFlags[arg]];
@@ -48,6 +54,9 @@
     }
     const paths = trace.resolvedPaths || (trace.args || []).filter(arg=>/^[CD]:[\\/]/i.test(arg));
     if (!arr(c.paths).every(path=>paths.some(actual=>norm(actual)===norm(path)))) return false;
+    if (c.cwd !== undefined && norm(trace.cwd) !== norm(c.cwd)) return false;
+    if (c.outputPath !== undefined && norm(trace.outputPath) !== norm(c.outputPath)) return false;
+    if (c.outputAppend !== undefined && trace.outputAppend !== c.outputAppend) return false;
     const output = String(trace.output || '').toLowerCase(), error = String(trace.error || '').toLowerCase();
     return arr(c.outputIncludes).every(v=>output.includes(String(v).toLowerCase())) &&
       arr(c.outputExcludes).every(v=>!output.includes(String(v).toLowerCase())) &&
@@ -105,6 +114,7 @@
     });
     const commands = collected.commands, pipelines = collected.pipelines;
     const ordered = collected.ordered === (checks.orderedCommands || []).length;
+    const needsRecheck = !ordered && sequence.some((check,index) => check.restartOnRepeat && collected.ordered > index);
     const stateOk = Object.entries(checks.state || {}).every(([path, expected]) => {
       let value = session;
       for (const key of path.split('.')) {
@@ -120,7 +130,7 @@
     });
     const commandOk = commands.every(Boolean) && pipelines.every(Boolean) && cwd && files.every(Boolean) && ordered && stateOk;
     const answerOk = !lesson.question || answer === lesson.question.answer;
-    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk };
+    return { ok: commandOk && answerOk, commandOk, answerOk, commands, pipelines, cwd, files, ordered, stateOk, needsRecheck };
   }
   function empty() {
     return { schema: 'windowsCLIroom.progress', version: VERSION, language: 'ja', activeId: '', completed: {}, checkpoints: {} };
